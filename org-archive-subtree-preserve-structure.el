@@ -37,7 +37,7 @@
   "A tool for archiving org subtrees mirroring original structure"
   :group 'org)
 
-(defun org--leaf-heading-p ()
+(defun oasps/leaf-heading-p ()
   "True if heading does not have any headings under it"
   (org-with-wide-buffer
    (let ((subtree-end (save-excursion (org-end-of-subtree t))))
@@ -46,7 +46,7 @@
            (point-max))
        (> (point) subtree-end)))))
 
-(defun org--insert-outline (outline)
+(defun oasps/insert-outline (outline)
   (org-with-wide-buffer
    (cl-loop initially (goto-char (point-min))
             for level from 1 to (length outline)
@@ -65,7 +65,7 @@
             (org-back-to-heading 'invisible-ok)
             (org-narrow-to-subtree))))
 
-(defun org--heading-location (outline)
+(defun oasps/heading-location (outline)
   (org-with-wide-buffer
    (and outline
         (cl-loop initially (goto-char (point-min))
@@ -79,13 +79,13 @@
                  (org-narrow-to-subtree))
         (point-marker))))
 
-(defun org--deduplicate-heading (outline)
-  (unless (org--leaf-heading-p)
+(defun oasps/deduplicate-heading (outline)
+  (unless (oasps/leaf-heading-p)
     (let ((heading-re (format org-complex-heading-regexp-format (car (last outline)))))
       (save-excursion
         (save-restriction
           (when (butlast outline)
-            (goto-char (marker-position (org--heading-location (butlast outline))))
+            (goto-char (marker-position (oasps/heading-location (butlast outline))))
             (org-narrow-to-subtree))
 
           (when (cl-loop initially (goto-char (point-min))
@@ -96,7 +96,7 @@
                          into heading-instances
                          finally return (>= heading-instances 2))
 
-            (let ((first-instance (org--heading-location outline))
+            (let ((first-instance (oasps/heading-location outline))
                   content
                   second-instance)
 
@@ -109,7 +109,7 @@
               (org-with-point-at first-instance
                 (delete-region (point) (save-excursion (org-end-of-subtree 'invisible-ok))))
 
-              (setq second-instance (org--heading-location outline))
+              (setq second-instance (oasps/heading-location outline))
 
               (unless second-instance
                 (error "Heading passed for deduplication does not seem to be duplicated"))
@@ -129,7 +129,7 @@
                          while (< (point) subtree-end)
                          do (outline-next-heading)
                          if (outline-on-heading-p 'invisible-ok)
-                         do (org--deduplicate-heading (org-get-outline-path 'with-self)))))))))))
+                         do (oasps/deduplicate-heading (org-get-outline-path 'with-self)))))))))))
 
 ;;;###autoload
 (defun org-archive-subtree-preserve-structure ()
@@ -150,14 +150,14 @@
 
     ;; make sure archive buffer contains relevant outline
     (with-current-buffer archive-buffer
-      (org--insert-outline outline-path))
+      (oasps/insert-outline outline-path))
 
     ;; do the archiving
     (org-archive-subtree)
 
     ;; clean up duplication, if any
     (with-current-buffer archive-buffer
-      (org--deduplicate-heading full-outline-path))))
+      (oasps/deduplicate-heading full-outline-path))))
 
 (provide 'org-archive-subtree-preserve-structure)
 
