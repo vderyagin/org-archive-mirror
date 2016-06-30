@@ -79,57 +79,59 @@
                  (org-narrow-to-subtree))
         (point-marker))))
 
+(defun oasps/heading-duplicated-p (outline)
+  (cl-loop initially (goto-char (point-min))
+           with level = (length outline)
+           with heading-re = (format org-complex-heading-regexp-format (car (last outline)))
+           while (< (point) (point-max))
+           count (and (re-search-forward heading-re nil 'noerror)
+                      (= level (length (match-string 1))))
+           into heading-instances
+           finally return (>= heading-instances 2)))
+
 (defun oasps/deduplicate-heading (outline)
   (unless (oasps/leaf-heading-p)
-    (let ((heading-re (format org-complex-heading-regexp-format (car (last outline)))))
-      (save-excursion
-        (save-restriction
-          (when (butlast outline)
-            (goto-char (marker-position (oasps/heading-location (butlast outline))))
-            (org-narrow-to-subtree))
+    (save-excursion
+      (save-restriction
+        (when (butlast outline)
+          (goto-char (marker-position (oasps/heading-location (butlast outline))))
+          (org-narrow-to-subtree))
 
-          (when (cl-loop initially (goto-char (point-min))
-                         with level = (length outline)
-                         while (< (point) (point-max))
-                         count (and (re-search-forward heading-re nil 'noerror)
-                                    (= level (length (match-string 1))))
-                         into heading-instances
-                         finally return (>= heading-instances 2))
+        (when (oasps/heading-duplicated-p outline)
+          (let ((first-instance (oasps/heading-location outline))
+                content
+                second-instance)
 
-            (let ((first-instance (oasps/heading-location outline))
-                  content
-                  second-instance)
+            (org-with-point-at first-instance
+              (let ((subtree-end (save-excursion (org-end-of-subtree 'invisible-ok))))
+                (outline-next-heading)
+                (when (< (point) subtree-end)
+                  (setq content (string-trim (delete-and-extract-region (point) subtree-end))))))
 
-              (org-with-point-at first-instance
-                (let ((subtree-end (save-excursion (org-end-of-subtree 'invisible-ok))))
-                  (outline-next-heading)
-                  (when (< (point) subtree-end)
-                    (setq content (string-trim (delete-and-extract-region (point) subtree-end))))))
+            (org-with-point-at first-instance
+              (delete-region (point) (save-excursion (org-end-of-subtree 'invisible-ok))))
 
-              (org-with-point-at first-instance
-                (delete-region (point) (save-excursion (org-end-of-subtree 'invisible-ok))))
+            (setq second-instance (oasps/heading-location outline))
 
-              (setq second-instance (oasps/heading-location outline))
+            (unless second-instance
+              (error "Heading passed for deduplication does not seem to be duplicated"))
 
-              (unless second-instance
-                (error "Heading passed for deduplication does not seem to be duplicated"))
+            (org-with-point-at second-instance
+              (save-restriction
+                (org-narrow-to-subtree)
+                (outline-next-heading)
+                (unless (looking-back "\n" 1)
+                  (insert "\n"))
+                (insert content "\n")))
 
-              (org-with-point-at second-instance
-                (save-restriction
-                  (org-narrow-to-subtree)
-                  (outline-next-heading)
-                  (unless (looking-back "\n" 1)
-                    (insert "\n"))
-                  (insert content "\n")))
-
-              ;; make sure there's no duplication in children, recursively
-              (org-with-point-at second-instance
-                (cl-loop for subtree-end = (org-with-point-at second-instance
-                                             (org-end-of-subtree 'invisible-ok))
-                         while (< (point) subtree-end)
-                         do (outline-next-heading)
-                         if (outline-on-heading-p 'invisible-ok)
-                         do (oasps/deduplicate-heading (org-get-outline-path 'with-self)))))))))))
+            ;; make sure there's no duplication in children, recursively
+            (org-with-point-at second-instance
+              (cl-loop for subtree-end = (org-with-point-at second-instance
+                                           (org-end-of-subtree 'invisible-ok))
+                       while (< (point) subtree-end)
+                       do (outline-next-heading)
+                       if (outline-on-heading-p 'invisible-ok)
+                       do (oasps/deduplicate-heading (org-get-outline-path 'with-self))))))))))
 
 ;;;###autoload
 (defun org-archive-subtree-preserve-structure ()
