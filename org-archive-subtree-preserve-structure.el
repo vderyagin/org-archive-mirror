@@ -46,6 +46,10 @@
            (point-max))
        (>= (point) subtree-end)))))
 
+(defun oasps/maybe-insert-newline ()
+  (unless (looking-back "\n\\|\\`" 1)
+    (insert "\n")))
+
 (defun oasps/insert-outline (outline)
   (org-with-wide-buffer
    (cl-loop initially (goto-char (point-min))
@@ -57,8 +61,7 @@
                         (= level (length (match-string 1))))
             do
             (goto-char (point-max))
-            (unless (looking-back "\n" 1)
-              (insert "\n"))
+            (oasps/maybe-insert-newline)
             (insert full-heading)
             end
             do
@@ -120,8 +123,7 @@
               (save-restriction
                 (org-narrow-to-subtree)
                 (outline-next-heading)
-                (unless (looking-back "\n" 1)
-                  (insert "\n"))
+                (oasps/maybe-insert-newline)
                 (insert content "\n")))
 
             ;; make sure there's no duplication in children, recursively
