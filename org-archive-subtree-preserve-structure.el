@@ -44,7 +44,7 @@
      (save-excursion
        (or (outline-next-heading)
            (point-max))
-       (> (point) subtree-end)))))
+       (>= (point) subtree-end)))))
 
 (defun oasps/insert-outline (outline)
   (org-with-wide-buffer
