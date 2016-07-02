@@ -24,15 +24,8 @@
       (expect (buffer-string) :to-equal "* foo\n** bar\n*** baz")))
 
   (it "leaves other siblings intact"
-    (let ((text "* foo
-** baz
-** quux
-*** grault
-*** plugh
-*** garply
-** foobar
-* bar
-** corge"))
+    (let ((text "* foo\n** baz\n** quux\n*** grault\n*** plugh\n*** garply\n** foobar
+* bar\n** corge"))
       (with-org text
         (oasps/insert-outline '("foo" "quux" "plugh"))
         (expect (buffer-string) :to-equal text))))

@@ -4,8 +4,7 @@
       (expect (oasps/leaf-heading-p) :to-be-truthy)))
 
   (it "accepts a heading with some plain text content"
-    (with-org "* TODO foo
-foo bar baz"
+    (with-org "* TODO foo\nfoo bar baz"
       (expect (oasps/leaf-heading-p) :to-be-truthy)))
 
   (it "accepts deeply nested heading with siblings"
@@ -14,10 +13,8 @@ foo bar baz"
 *** baz
 *** <POINT>quux
 *** corge"
-      (expect (oasps/leaf-heading-p) :to-be-truthy)
-      ))
+      (expect (oasps/leaf-heading-p) :to-be-truthy)))
 
   (it "rejects a heading with children"
-    (with-org "* foo
-** bar"
+    (with-org "* foo\n** bar"
       (expect (oasps/leaf-heading-p) :not :to-be-truthy))))
