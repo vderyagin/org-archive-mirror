@@ -35,16 +35,14 @@
 
 (defgroup org-archive-subtree-preserve-structure nil
   "A tool for archiving org subtrees mirroring original structure"
-  :group 'org)
+  :group 'org-archive)
 
 (defun oasps/leaf-heading-p ()
   "True if heading does not have any headings under it"
   (org-with-wide-buffer
    (let ((subtree-end (save-excursion (org-end-of-subtree t))))
-     (save-excursion
-       (or (outline-next-heading)
-           (point-max))
-       (>= (point) subtree-end)))))
+     (outline-next-heading)
+     (>= (point) subtree-end))))
 
 (defun oasps/maybe-insert-newline ()
   (unless (looking-back "\n\\|\\`" 1)
