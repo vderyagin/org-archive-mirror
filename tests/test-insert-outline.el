@@ -1,4 +1,9 @@
 (describe "oasps/insert-outline"
+  (it "does nothing if no outline provided"
+    (with-org ""
+      (oasps/insert-outline nil)
+      (expect (buffer-string) :to-equal "")))
+
   (it "inserts outlines in empty buffer"
     (with-org ""
       (oasps/insert-outline '("foo" "bar"))

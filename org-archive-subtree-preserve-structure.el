@@ -68,17 +68,17 @@
 
 (defun oasps/heading-location (outline)
   (org-with-wide-buffer
-   (and outline
-        (cl-loop initially (goto-char (point-min))
-                 for level from 1 to (length outline)
-                 for item in outline
-                 for re = (format org-complex-heading-regexp-format item)
-                 always (and (re-search-forward re nil 'noerror)
-                             (= level (length (match-string 1))))
-                 do
-                 (org-back-to-heading 'invisible-ok)
-                 (org-narrow-to-subtree))
-        (point-marker))))
+   (when outline
+     (cl-loop initially (goto-char (point-min))
+              for level from 1 to (length outline)
+              for item in outline
+              for re = (format org-complex-heading-regexp-format item)
+              always (and (re-search-forward re nil 'noerror)
+                          (= level (length (match-string 1))))
+              do
+              (org-back-to-heading 'invisible-ok)
+              (org-narrow-to-subtree)
+              finally return (point)))))
 
 (defun oasps/heading-duplicated-p (outline)
   (cl-loop initially (goto-char (point-min))
