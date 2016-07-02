@@ -30,15 +30,15 @@
 
 ;;; Code:
 
-(require 'subr-x)
 (require 'org)
+(require 'subr-x)
 
 (defgroup org-archive-subtree-preserve-structure nil
   "A tool for archiving org subtrees mirroring original structure"
   :group 'org-archive)
 
 (defun oasps/leaf-heading-p ()
-  "True if heading does not have any headings under it"
+  "True if heading at point does not have any child headings"
   (org-with-wide-buffer
    (let ((subtree-end (save-excursion (org-end-of-subtree t))))
      (outline-next-heading)
@@ -49,6 +49,7 @@
     (insert "\n")))
 
 (defun oasps/insert-outline (outline)
+  "Make sure org outline OUTLINE exists in current buffer"
   (org-with-wide-buffer
    (cl-loop initially (goto-char (point-min))
             for level from 1 to (length outline)
@@ -95,7 +96,7 @@
     (save-excursion
       (save-restriction
         (when (butlast outline)
-          (goto-char (marker-position (oasps/heading-location (butlast outline))))
+          (goto-char (oasps/heading-location (butlast outline)))
           (org-narrow-to-subtree))
 
         (when (oasps/heading-duplicated-p outline)
