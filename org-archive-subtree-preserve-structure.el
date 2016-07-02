@@ -48,6 +48,13 @@
   (unless (looking-back "\n\\|\\`" 1)
     (insert "\n")))
 
+(defun oasps/goto-heading (text level)
+  "If heading TEXT on level LEVEL exists, move point just past it
+and return a truthy value, move to (point-max) and return nil otherwise"
+  (cl-loop with re = (format org-complex-heading-regexp-format text)
+           while (re-search-forward re nil 'noerror)
+           thereis (= (length (match-string 1)) level)))
+
 (defun oasps/insert-outline (outline)
   "Make sure org outline OUTLINE exists in current buffer"
   (org-with-wide-buffer
@@ -55,9 +62,7 @@
             for level from 1 to (length outline)
             for item in outline
             for full-heading = (format "%s %s" (make-string level ?*) item)
-            for re = (format org-complex-heading-regexp-format item)
-            unless (and (re-search-forward re nil 'noerror)
-                        (= level (length (match-string 1))))
+            unless (oasps/goto-heading item level)
             do
             (goto-char (point-max))
             (oasps/maybe-insert-newline)
@@ -73,23 +78,23 @@
      (cl-loop initially (goto-char (point-min))
               for level from 1 to (length outline)
               for item in outline
-              for re = (format org-complex-heading-regexp-format item)
-              always (and (re-search-forward re nil 'noerror)
-                          (= level (length (match-string 1))))
+              always (oasps/goto-heading item level)
               do
               (org-back-to-heading 'invisible-ok)
               (org-narrow-to-subtree)
               finally return (point)))))
 
 (defun oasps/heading-duplicated-p (outline)
-  (cl-loop initially (goto-char (point-min))
-           with level = (length outline)
-           with heading-re = (format org-complex-heading-regexp-format (car (last outline)))
-           while (< (point) (point-max))
-           count (and (re-search-forward heading-re nil 'noerror)
-                      (= level (length (match-string 1))))
-           into heading-instances
-           finally return (>= heading-instances 2)))
+  (org-with-wide-buffer
+   (cl-loop initially (when-let (parent (oasps/heading-location (butlast outline)))
+                        (goto-char parent)
+                        (org-narrow-to-subtree))
+            with level = (length outline)
+            with heading = (car (last outline))
+            while (< (point) (point-max))
+            count (oasps/goto-heading heading level)
+            into heading-instances
+            if (>= heading-instances 2) return t)))
 
 (defun oasps/deduplicate-heading (outline)
   (unless (oasps/leaf-heading-p)
