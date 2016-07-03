@@ -93,8 +93,8 @@ and return a truthy value, move to (point-max) and return nil otherwise"
             with heading = (car (last outline))
             while (< (point) (point-max))
             count (oasps/goto-heading heading level)
-            into heading-instances
-            if (>= heading-instances 2) return t)))
+            into heading-occurrences
+            if (>= heading-occurrences 2) return t)))
 
 (defun oasps/deduplicate-heading (outline)
   (unless (oasps/leaf-heading-p)
