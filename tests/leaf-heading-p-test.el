@@ -17,4 +17,4 @@
 
   (it "rejects a heading with children"
     (with-org "* foo\n** bar"
-      (expect (oasps/leaf-heading-p) :not :to-be-truthy))))
+      (expect (oasps/leaf-heading-p) :to-be nil))))
