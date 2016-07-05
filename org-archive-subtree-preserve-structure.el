@@ -139,18 +139,18 @@ Do nothing if outline is on top level or does not exist."
         (insert content "\n")))))
 
 (defun oasps/deduplicate-heading (outline)
-  (unless (org-with-point-at (oasps/heading-location outline)
-            (oasps/leaf-heading-p))
-    (save-excursion
-      (save-restriction
-        (when (oasps/heading-duplicated-p outline)
-          (cl-loop initially (oasps/narrow-to-parent outline)
-                   for first-instance = (oasps/heading-location outline)
-                   for content = (oasps/remove-heading-extract-children first-instance)
-                   for second-instance = (oasps/heading-location outline)
-                   do (oasps/insert-content second-instance content)
-                   while (oasps/heading-duplicated-p outline)
-                   finally (oasps/deduplicate-children outline)))))))
+  (save-excursion
+    (save-restriction
+      (when (and (org-with-point-at (oasps/heading-location outline)
+                   (not (oasps/leaf-heading-p)))
+                 (oasps/heading-duplicated-p outline))
+        (cl-loop initially (oasps/narrow-to-parent outline)
+                 for first-instance = (oasps/heading-location outline)
+                 for content = (oasps/remove-heading-extract-children first-instance)
+                 for second-instance = (oasps/heading-location outline)
+                 do (oasps/insert-content second-instance content)
+                 while (oasps/heading-duplicated-p outline)
+                 finally (oasps/deduplicate-children outline))))))
 
 ;;;###autoload
 (defun org-archive-subtree-preserve-structure ()
