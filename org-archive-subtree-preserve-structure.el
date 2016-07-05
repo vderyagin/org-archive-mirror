@@ -107,6 +107,18 @@ Do nothing if outline is on top level or does not exist."
     (goto-char parent-location)
     (org-narrow-to-subtree)))
 
+(defun oasps/remove-heading-extract-children (point-or-marker)
+  (prog1 (org-with-point-at point-or-marker
+           (let ((subtree-end (save-excursion (org-end-of-subtree 'invisible-ok))))
+             (outline-next-heading)
+             (when (< (point) subtree-end)
+               (string-trim (delete-and-extract-region (point) subtree-end)))))
+
+    (org-with-point-at point-or-marker
+      (delete-region (point) (save-excursion (org-end-of-subtree 'invisible-ok)))
+      (while (looking-at "\n")
+        (delete-char 1)))))
+
 (defun oasps/deduplicate-heading (outline)
   (unless (org-with-point-at (oasps/heading-location outline)
             (oasps/leaf-heading-p))
@@ -116,27 +128,14 @@ Do nothing if outline is on top level or does not exist."
 
         (when (oasps/heading-duplicated-p outline)
           (while (oasps/heading-duplicated-p outline)
-            (let ((first-instance (oasps/heading-location outline))
-                  content)
-              (org-with-point-at first-instance
-                (let ((subtree-end (save-excursion (org-end-of-subtree 'invisible-ok))))
+            (when-let ((content (oasps/remove-heading-extract-children
+                                 (oasps/heading-location outline))))
+              (org-with-point-at (oasps/heading-location outline)
+                (save-restriction
+                  (org-narrow-to-subtree)
                   (outline-next-heading)
-                  (when (< (point) subtree-end)
-                    (setq content (string-trim (delete-and-extract-region (point) subtree-end))))))
-
-              (org-with-point-at first-instance
-                (delete-region (point)
-                               (save-excursion (org-end-of-subtree 'invisible-ok)))
-                (while (looking-at "\n")
-                  (delete-char 1)))
-
-              (when content
-                (org-with-point-at (oasps/heading-location outline)
-                  (save-restriction
-                    (org-narrow-to-subtree)
-                    (outline-next-heading)
-                    (oasps/maybe-insert-newline)
-                    (insert content "\n"))))))
+                  (oasps/maybe-insert-newline)
+                  (insert content "\n")))))
 
           ;; make sure there's no duplication in children, recursively
           (let ((deduplicated-heading-location (oasps/heading-location outline)))
