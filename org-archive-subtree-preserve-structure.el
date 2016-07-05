@@ -39,10 +39,11 @@
 
 (defun oasps/leaf-heading-p ()
   "True if heading at point does not have any child headings"
-  (org-with-wide-buffer
-   (let ((subtree-end (save-excursion (org-end-of-subtree t))))
-     (outline-next-heading)
-     (>= (point) subtree-end))))
+  (unless (zerop (org-outline-level))
+    (org-with-wide-buffer
+     (let ((subtree-end (save-excursion (org-end-of-subtree t))))
+       (outline-next-heading)
+       (>= (point) subtree-end)))))
 
 (defun oasps/maybe-insert-newline ()
   (unless (looking-back "\n\\|\\`" 1)
@@ -86,9 +87,11 @@ and return a truthy value, move to (point-max) and return nil otherwise"
 
 (defun oasps/heading-duplicated-p (outline)
   (org-with-wide-buffer
-   (cl-loop initially (when-let (parent (oasps/heading-location (butlast outline)))
-                        (goto-char parent)
-                        (org-narrow-to-subtree))
+   (cl-loop initially (if-let (parent (oasps/heading-location (butlast outline)))
+                          (progn
+                            (goto-char parent)
+                            (org-narrow-to-subtree))
+                        (goto-char (point-min)))
             with level = (length outline)
             with heading = (car (last outline))
             while (< (point) (point-max))
