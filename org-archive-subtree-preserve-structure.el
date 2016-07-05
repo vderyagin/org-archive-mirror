@@ -145,9 +145,10 @@ Do nothing if outline is on top level or does not exist."
       (save-restriction
         (when (oasps/heading-duplicated-p outline)
           (cl-loop initially (oasps/narrow-to-parent outline)
-                   for location = (oasps/heading-location outline)
-                   for content = (oasps/remove-heading-extract-children location)
-                   do (oasps/insert-content location content)
+                   for first-instance = (oasps/heading-location outline)
+                   for content = (oasps/remove-heading-extract-children first-instance)
+                   for second-instance = (oasps/heading-location outline)
+                   do (oasps/insert-content second-instance content)
                    while (oasps/heading-duplicated-p outline)
                    finally (oasps/deduplicate-children outline)))))))
 

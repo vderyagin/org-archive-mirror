@@ -28,6 +28,10 @@
 ** bar
 *** quux
 **** one
+** baz
+*** corge
+**** thud
+***** plugh
 ** bar
 *** quux
 **** two
@@ -36,6 +40,10 @@
       (expect (buffer-string)
               :to-equal
               "* foo
+** baz
+*** corge
+**** thud
+***** plugh
 ** bar
 *** quux
 **** one
