@@ -17,4 +17,7 @@
 
   (it "rejects a heading with children"
     (with-org "* foo\n** bar"
-      (expect (oasps/leaf-heading-p) :to-be nil))))
+      (expect (oasps/leaf-heading-p) :to-be nil)))
+
+  (it "does not explode when called outside of any subtree"
+    (with-org "" (oasps/leaf-heading-p))))
