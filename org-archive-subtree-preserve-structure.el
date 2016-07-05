@@ -117,8 +117,7 @@ Do nothing if outline is on top level or does not exist."
         (when (oasps/heading-duplicated-p outline)
           (while (oasps/heading-duplicated-p outline)
             (let ((first-instance (oasps/heading-location outline))
-                  content
-                  second-instance)
+                  content)
               (org-with-point-at first-instance
                 (let ((subtree-end (save-excursion (org-end-of-subtree 'invisible-ok))))
                   (outline-next-heading)
@@ -131,10 +130,8 @@ Do nothing if outline is on top level or does not exist."
                 (while (looking-at "\n")
                   (delete-char 1)))
 
-              (setq second-instance (oasps/heading-location outline))
-
               (when content
-                (org-with-point-at second-instance
+                (org-with-point-at (oasps/heading-location outline)
                   (save-restriction
                     (org-narrow-to-subtree)
                     (outline-next-heading)
