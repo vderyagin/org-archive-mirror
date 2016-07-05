@@ -119,33 +119,37 @@ Do nothing if outline is on top level or does not exist."
       (while (looking-at "\n")
         (delete-char 1)))))
 
+(defun oasps/deduplicate-children (parent-outline)
+  (let ((parent (oasps/heading-location parent-outline)))
+    (org-with-point-at parent
+      (when (org-goto-first-child)
+        (cl-loop for subtree-end = (org-with-point-at parent
+                                     (org-end-of-subtree 'invisible-ok))
+                 while (< (point) subtree-end)
+                 do (oasps/deduplicate-heading (org-get-outline-path 'with-self))
+                 always (outline-get-next-sibling))))))
+
+(defun oasps/insert-content (point-or-marker content)
+  (when content
+    (org-with-point-at point-or-marker
+      (save-restriction
+        (org-narrow-to-subtree)
+        (outline-next-heading)
+        (oasps/maybe-insert-newline)
+        (insert content "\n")))))
+
 (defun oasps/deduplicate-heading (outline)
   (unless (org-with-point-at (oasps/heading-location outline)
             (oasps/leaf-heading-p))
     (save-excursion
       (save-restriction
-        (oasps/narrow-to-parent outline)
-
         (when (oasps/heading-duplicated-p outline)
-          (while (oasps/heading-duplicated-p outline)
-            (when-let ((content (oasps/remove-heading-extract-children
-                                 (oasps/heading-location outline))))
-              (org-with-point-at (oasps/heading-location outline)
-                (save-restriction
-                  (org-narrow-to-subtree)
-                  (outline-next-heading)
-                  (oasps/maybe-insert-newline)
-                  (insert content "\n")))))
-
-          ;; make sure there's no duplication in children, recursively
-          (let ((deduplicated-heading-location (oasps/heading-location outline)))
-            (org-with-point-at deduplicated-heading-location
-              (when (org-goto-first-child)
-                (cl-loop for subtree-end = (org-with-point-at deduplicated-heading-location
-                                             (org-end-of-subtree 'invisible-ok))
-                         while (< (point) subtree-end)
-                         do (oasps/deduplicate-heading (org-get-outline-path 'with-self))
-                         always (outline-get-next-sibling))))))))))
+          (cl-loop initially (oasps/narrow-to-parent outline)
+                   for location = (oasps/heading-location outline)
+                   for content = (oasps/remove-heading-extract-children location)
+                   do (oasps/insert-content location content)
+                   while (oasps/heading-duplicated-p outline)
+                   finally (oasps/deduplicate-children outline)))))))
 
 ;;;###autoload
 (defun org-archive-subtree-preserve-structure ()
