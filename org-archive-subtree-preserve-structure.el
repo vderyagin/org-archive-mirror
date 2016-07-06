@@ -30,6 +30,9 @@
 
 ;;; Code:
 
+(eval-when-compile
+  (require 'org-macs))
+
 (require 'org)
 (require 'org-archive)
 (require 'subr-x)
