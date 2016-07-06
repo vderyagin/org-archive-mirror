@@ -169,15 +169,21 @@ Do nothing if outline is on top level or does not exist."
          (archive-buffer (or (find-buffer-visiting archive-file)
                              (find-file-noselect archive-file))))
 
-    ;; make sure archive buffer contains relevant outline
+
     (with-current-buffer archive-buffer
-      (oasps/insert-outline outline-path))
+      ;; make sure archive buffer contains relevant outline
+      (oasps/insert-outline outline-path)
+      ;; narrow archive buffer to parent so that archived entry does not end
+      ;; up in wrong place
+      (goto-char (oasps/heading-location outline-path))
+      (org-narrow-to-subtree))
 
     ;; do the archiving
     (org-archive-subtree)
 
     ;; clean up duplication, if any
     (with-current-buffer archive-buffer
+      (widen)
       (oasps/deduplicate-heading full-outline-path))))
 
 (provide 'org-archive-subtree-preserve-structure)
