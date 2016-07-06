@@ -181,9 +181,10 @@ Do nothing if outline is on top level or does not exist."
     ;; do the archiving
     (org-archive-subtree)
 
-    ;; clean up duplication, if any
     (with-current-buffer archive-buffer
+      ;; get rid of any previous narrowing
       (widen)
+      ;; clean up duplication, if any
       (oasps/deduplicate-heading full-outline-path))))
 
 (provide 'org-archive-subtree-preserve-structure)
