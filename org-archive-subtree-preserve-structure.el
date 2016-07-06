@@ -169,10 +169,15 @@ Do nothing if outline is on top level or does not exist."
          (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
          (archive-buffer (or (find-buffer-visiting archive-file)
                              (find-file-noselect archive-file)))
-         (org-archive-location (format "%s::%s %s"
-                                       archive-file
-                                       (make-string (seq-length parent-outline-path) ?*)
-                                       (car (last parent-outline-path)))))
+         (org-archive-location (format
+                                "%s::%s"
+                                archive-file
+                                (if parent-outline-path
+                                    (format
+                                     "%s %s"
+                                     (make-string (length parent-outline-path) ?*)
+                                     (org-last parent-outline-path))
+                                  ""))))
 
     (with-current-buffer archive-buffer
       ;; make sure archive buffer contains relevant outline
