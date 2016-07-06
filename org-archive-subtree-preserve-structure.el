@@ -31,11 +31,20 @@
 ;;; Code:
 
 (require 'org)
+(require 'org-archive)
 (require 'subr-x)
 
 (defgroup org-archive-subtree-preserve-structure nil
   "A tool for archiving org subtrees mirroring original structure"
   :group 'org-archive)
+
+(defcustom org-archive-subtree-preserve-structure-file-function
+  (lambda () (org-extract-archive-file (org-get-local-archive-location)))
+  "A function used to determine the location of archive file. Is
+invoked at the entry to be archived. Default implementation
+uses `org-archive-location' to determine the file."
+  :group 'org-archive-subtree-preserve-structure
+  :type 'function)
 
 (defun oasps/leaf-heading-p ()
   "True if heading at point does not have any child headings"
@@ -155,28 +164,24 @@ Do nothing if outline is on top level or does not exist."
 ;;;###autoload
 (defun org-archive-subtree-preserve-structure ()
   (interactive)
-  (let* ((full-outline-path (org-get-outline-path 'with-self))
-         (outline-path (butlast full-outline-path))
-         (org-file (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
-         (archive-file (expand-file-name (format "archive/archive_%s" org-file)
-                                         org-directory))
-         (parent-heading-line (format "%s %s"
-                                      (make-string (seq-length outline-path) ?*)
-                                      (car (last outline-path))))
-         (org-archive-location (format (expand-file-name "archive/archive_%%s::%s"
-                                                         org-directory)
-                                       parent-heading-line))
+  (let* ((outline-path (org-get-outline-path 'with-self))
+         (parent-outline-path (butlast outline-path))
+         (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
          (archive-buffer (or (find-buffer-visiting archive-file)
-                             (find-file-noselect archive-file))))
-
+                             (find-file-noselect archive-file)))
+         (org-archive-location (format "%s::%s %s"
+                                       archive-file
+                                       (make-string (seq-length parent-outline-path) ?*)
+                                       (car (last parent-outline-path)))))
 
     (with-current-buffer archive-buffer
       ;; make sure archive buffer contains relevant outline
-      (oasps/insert-outline outline-path)
-      ;; narrow archive buffer to parent so that archived entry does not end
-      ;; up in wrong place
-      (goto-char (oasps/heading-location outline-path))
-      (org-narrow-to-subtree))
+      (oasps/insert-outline parent-outline-path)
+      ;; if entry to be archived has a parent, narrow archive buffer to it, so
+      ;; that archived entry does not end up in wrong place
+      (when-let (parent-heading (oasps/heading-location parent-outline-path))
+        (goto-char parent-heading)
+        (org-narrow-to-subtree)))
 
     ;; do the archiving
     (org-archive-subtree)
@@ -185,7 +190,7 @@ Do nothing if outline is on top level or does not exist."
       ;; get rid of any previous narrowing
       (widen)
       ;; clean up duplication, if any
-      (oasps/deduplicate-heading full-outline-path))))
+      (oasps/deduplicate-heading outline-path))))
 
 (provide 'org-archive-subtree-preserve-structure)
 
