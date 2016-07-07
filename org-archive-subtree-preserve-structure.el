@@ -61,6 +61,10 @@ uses `org-archive-location' to determine the file."
   (unless (looking-back "\n\\|\\`" 1)
     (insert "\n")))
 
+(defun oasps/get-full-outline-path ()
+  (append (org-get-outline-path)
+          (list (nth 4 (org-heading-components)))))
+
 (defun oasps/goto-heading (text level)
   "If heading TEXT on level LEVEL exists, move point just past it
 and return a truthy value, move to (point-max) and return nil otherwise"
@@ -138,7 +142,7 @@ Do nothing if outline is on top level or does not exist."
         (cl-loop for subtree-end = (org-with-point-at parent
                                      (org-end-of-subtree 'invisible-ok))
                  while (< (point) subtree-end)
-                 do (oasps/deduplicate-heading (org-get-outline-path 'with-self))
+                 do (oasps/deduplicate-heading (oasps/get-full-outline-path))
                  always (outline-get-next-sibling))))))
 
 (defun oasps/insert-content (point-or-marker content)
@@ -167,7 +171,7 @@ Do nothing if outline is on top level or does not exist."
 ;;;###autoload
 (defun org-archive-subtree-preserve-structure ()
   (interactive)
-  (let* ((outline-path (org-get-outline-path 'with-self))
+  (let* ((outline-path (oasps/get-full-outline-path))
          (parent-outline-path (butlast outline-path))
          (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
          (archive-buffer (or (find-buffer-visiting archive-file)
