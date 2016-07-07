@@ -22,9 +22,3 @@ variable, but if you need to employ more complex logic then it allows, you can
 set `org-archive-subtree-preserve-structure-file-function` to a no-argument
 function, which, when invoked at the original heading location, must return a
 path to archive file.
-
-## Compatibility ##
-
-This package is incompatible with version of org-mode currently bundled in
-Emacs. You need a recent version of "org" or "org-plus-contrib" package from
-"org" package archive,
