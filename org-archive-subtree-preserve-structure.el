@@ -189,8 +189,9 @@ Do nothing if outline is on top level or does not exist."
     (with-current-buffer archive-buffer
       ;; make sure archive buffer contains relevant outline
       (oasps/insert-outline parent-outline-path)
-      ;; if entry to be archived has a parent, narrow archive buffer to it, so
-      ;; that archived entry does not end up in wrong place
+      ;; if entry to be archived has a parent, narrow archive buffer
+      ;; correspondingly, so that archived entry does not end up in wrong
+      ;; place
       (when-let (parent-heading (oasps/heading-location parent-outline-path))
         (goto-char parent-heading)
         (org-narrow-to-subtree)))
@@ -201,7 +202,7 @@ Do nothing if outline is on top level or does not exist."
     (with-current-buffer archive-buffer
       ;; get rid of any previous narrowing
       (widen)
-      ;; clean up duplication, if any
+      ;; clean up duplications, if any were introduced
       (oasps/deduplicate-heading outline-path))))
 
 (provide 'org-archive-subtree-preserve-structure)
