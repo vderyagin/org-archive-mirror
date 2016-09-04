@@ -15,6 +15,8 @@ enough to achieve this result.
 
 (with-eval-after-load 'org-agenda
   (fset 'org-agenda-archive #'org-agenda-archive-default))
+
+(define-key org-mode-map (kbd "C-c $") #'org-archive-subtree-default)
 ```
 
 By default an archive file is determined according to `org-archive-location`
