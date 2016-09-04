@@ -168,9 +168,7 @@ Do nothing if outline is on top level or does not exist."
                  while (oasps/heading-duplicated-p outline)
                  finally (oasps/deduplicate-children outline))))))
 
-;;;###autoload
-(defun org-archive-subtree-preserve-structure ()
-  (interactive)
+(defun org-archive-subtree-preserve-structure-1 ()
   (let* ((outline-path (oasps/get-full-outline-path))
          (parent-outline-path (butlast outline-path))
          (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
@@ -204,6 +202,22 @@ Do nothing if outline is on top level or does not exist."
       (widen)
       ;; clean up duplications, if any were introduced
       (oasps/deduplicate-heading outline-path))))
+
+;;;###autoload
+(defun org-archive-subtree-preserve-structure ()
+  (interactive)
+  ;; Code for handling headings in region adapted from `org-archive-subtree' function
+  (if (and (org-region-active-p) org-loop-over-headlines-in-active-region)
+      (let ((scope (if (eq org-loop-over-headlines-in-active-region 'start-level)
+                       'region-start-level 'region))
+            org-loop-over-headlines-in-active-region)
+        (org-map-entries
+         '(progn (setq org-map-continue-from (progn (org-back-to-heading) (point)))
+                 (org-archive-subtree-preserve-structure-1))
+         org-loop-over-headlines-in-active-region
+         scope
+         (if (outline-invisible-p) (org-end-of-subtree nil t))))
+    (org-archive-subtree-preserve-structure-1)))
 
 (provide 'org-archive-subtree-preserve-structure)
 
