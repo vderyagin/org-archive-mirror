@@ -42,7 +42,11 @@
   :group 'org-archive)
 
 (defcustom org-archive-subtree-preserve-structure-file-function
-  (lambda () (org-extract-archive-file (org-get-local-archive-location)))
+  (lambda ()
+    (car
+     (org-archive--compute-location
+      (or (org-entry-get nil "ARCHIVE" 'inherit)
+          org-archive-location))))
   "A function used to determine the location of archive file. Is
 invoked at the entry to be archived. Default implementation
 uses `org-archive-location' to determine the file."
