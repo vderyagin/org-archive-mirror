@@ -223,6 +223,44 @@ Do nothing if outline is on top level or does not exist."
          (if (outline-invisible-p) (org-end-of-subtree nil t))))
     (org-archive-subtree-preserve-structure-1)))
 
+(defun org-archive-whole-file ()
+  (interactive)
+  (let ((archive-file (funcall org-archive-subtree-preserve-structure-file-function)))
+    (if (file-exists-p archive-file)
+        (oasps/complex-whole-file-archive archive-file)
+      (oasps/simple-whole-file-archive archive-file))))
+
+(defun oasps/complex-whole-file-archive (archive-file)
+  ;; archive header
+
+  ;; archive plain part
+
+  ;; archive/deduplicate headings
+
+  ;; add various properties to file
+
+  (oasps/whole-file-archive-cleanup archive-file))
+
+(defun oasps/simple-whole-file-archive (archive-file)
+  (thread-first archive-file
+    file-name-directory
+    (make-directory 'parents))
+
+  (org-with-wide-buffer
+   (write-region nil nil archive-file nil nil nil 'excl))
+
+  (oasps/whole-file-archive-cleanup archive-file))
+
+(defun oasps/whole-file-archive-cleanup (archive-file)
+  (erase-buffer)
+
+  (thread-last archive-file
+    abbreviate-file-name
+    (format "File is archived [[file:%s][here]], feel free do delete this one")
+    insert)
+
+  (save-buffer))
+
 (provide 'org-archive-subtree-preserve-structure)
 
 ;;; org-archive-subtree-preserve-structure.el ends here
