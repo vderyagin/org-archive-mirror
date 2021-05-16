@@ -326,6 +326,33 @@ Do nothing if outline is on top level or does not exist."
 
   (save-buffer))
 
+(defun org-archive-mirror-toggle ()
+  (interactive)
+
+  (unless buffer-file-name
+    (user-error "Current buffer is not associated with file"))
+  (unless (eq major-mode 'org-mode)
+    (user-error "Can only be invoked from org-mode"))
+
+  (if-let* ((other-file (if (oasps/in-archive-p)
+                            (oasps/find-archive-source)
+                          (funcall org-archive-subtree-preserve-structure-file-function)))
+            (other-file-full-path (expand-file-name other-file))
+            ((file-exists-p other-file-full-path)))
+      (find-file (expand-file-name other-file))
+    (user-error "Failed to find corresponding file")))
+
+(defun oasps/in-archive-p ()
+  (string-match-p "/archive/" buffer-file-name))
+
+(defun oasps/find-archive-source ()
+  (org-with-wide-buffer
+   (cl-loop initially (goto-char (point-min))
+            until (eobp)
+            thereis (and (org-at-heading-p)
+                         (org-entry-get (point) "ARCHIVE_FILE"))
+            do (outline-next-heading))))
+
 (provide 'org-archive-subtree-preserve-structure)
 
 ;;; org-archive-subtree-preserve-structure.el ends here
