@@ -231,15 +231,75 @@ Do nothing if outline is on top level or does not exist."
       (oasps/simple-whole-file-archive archive-file))))
 
 (defun oasps/complex-whole-file-archive (archive-file)
-  ;; archive header
-
-  ;; archive plain part
-
-  ;; archive/deduplicate headings
-
-  ;; add various properties to file
+  (let ((archive-buffer (or (find-buffer-visiting archive-file)
+                            (find-file-noselect archive-file)))
+        (archive-file-context (oasps/file-context)))
+    (oasps/archive-content-before-headings archive-buffer)
+    (oasps/archive-all-headings-in-buffer)
+    (oasps/insert-context archive-file-context archive-buffer))
 
   (oasps/whole-file-archive-cleanup archive-file))
+
+(defun oasps/archive-content-before-headings (archive-buffer)
+  (when-let ((content-before-headings
+              (org-with-wide-buffer
+               (goto-char (point-min))
+               (and (not (org-at-heading-p))
+                    (delete-and-extract-region
+                     (point-min)
+                     (save-excursion
+                       (outline-next-heading))))))
+             ((and (stringp content-before-headings)
+                   (string-match-p "[^ \r\t\n]" content-before-headings))))
+    (with-current-buffer archive-buffer
+      (goto-char (point-min))
+      (insert content-before-headings))))
+
+(defun oasps/archive-all-headings-in-buffer ()
+  (org-with-wide-buffer
+   (goto-char (point-min))
+   (while (< (point) (point-max))
+     (if (org-at-heading-p)
+         (org-archive-subtree-preserve-structure-1)
+       (outline-next-heading)))))
+
+(defun oasps/insert-context (context archive-buffer)
+  (with-current-buffer archive-buffer
+    (org-with-point-at (point-min)
+      (when (org-at-heading-p)
+        (insert "\n")))
+
+    (seq-each
+     (lambda (item)
+       (when-let* ((value (cdr (assq item context)))
+                   ((string-match-p "[^ \r\t\n]" value)))
+         (org-with-point-at (point-min)
+           (org-set-property
+            (concat "ARCHIVE_" (upcase (symbol-name item)))
+            value))))
+     org-archive-save-context-info)))
+
+(defun oasps/file-context ()
+    (let* ((time (format-time-string
+                  (substring (cdr org-time-stamp-formats) 1 -1)))
+           (file (abbreviate-file-name
+                  (or (buffer-file-name (buffer-base-buffer))
+                      (error "No file associated to buffer"))))
+           (all-tags (org-get-tags))
+           (local-tags
+            (cl-remove-if (lambda (tag)
+                            (get-text-property 0 'inherited tag))
+                          all-tags))
+           (inherited-tags
+            (cl-remove-if-not (lambda (tag)
+                                (get-text-property 0 'inherited tag))
+                              all-tags)))
+      (list
+       (cons 'category (org-get-category nil 'force-refresh))
+       (cons 'file file)
+       (cons 'itags (mapconcat #'identity inherited-tags " "))
+       (cons 'ltags (mapconcat #'identity local-tags " "))
+       (cons 'time time))))
 
 (defun oasps/simple-whole-file-archive (archive-file)
   (thread-first archive-file
@@ -248,6 +308,11 @@ Do nothing if outline is on top level or does not exist."
 
   (org-with-wide-buffer
    (write-region nil nil archive-file nil nil nil 'excl))
+
+  (oasps/insert-context
+   (oasps/file-context)
+   (or (find-buffer-visiting archive-file)
+       (find-file-noselect archive-file)))
 
   (oasps/whole-file-archive-cleanup archive-file))
 
