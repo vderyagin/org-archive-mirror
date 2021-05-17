@@ -408,9 +408,9 @@ Do nothing if outline is on top level or does not exist."
       (user-error "only plain stuff"))
     (let* ((start (org-with-wide-buffer
                    (goto-char (region-beginning))
-                   (forward-line 0)
                    (while (looking-at "\n")
                      (forward-char 1))
+                   (forward-line 0)
                    (goto-char (org-element-property :begin (org-element-at-point)))
                    (forward-line 0)
                    (point)))
