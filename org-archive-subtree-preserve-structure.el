@@ -370,7 +370,7 @@ Do nothing if outline is on top level or does not exist."
 (defun oasps/insert-cookie ()
   (when-let* ((note-format-string org-archive-subtree-preserve-structure-archive-note)
               (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
-              (cookie (format note-format-string archive-file))
+              (cookie (format note-format-string (abbreviate-file-name archive-file)))
               ((org-with-wide-buffer
                 (goto-char (point-min))
                 ;; buffer must have some content, and not have any links to archive file already:
