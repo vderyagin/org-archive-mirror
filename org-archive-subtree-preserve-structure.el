@@ -355,7 +355,14 @@ Do nothing if outline is on top level or does not exist."
     (user-error "Failed to find corresponding file")))
 
 (defun oasps/in-archive-p ()
-  (string-match-p "/archive/" buffer-file-name))
+  (org-with-wide-buffer
+   (cl-loop initially (goto-char (point-min))
+            until (eobp)
+            thereis (and (org-at-heading-p)
+                         (seq-some
+                          (apply-partially #'string-prefix-p "ARCHIVE_")
+                          (seq-map #'car (org-entry-properties))))
+            do (outline-next-heading))))
 
 (defun oasps/find-archive-source ()
   (org-with-wide-buffer
