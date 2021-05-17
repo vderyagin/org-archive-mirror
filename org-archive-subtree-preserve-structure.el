@@ -396,6 +396,36 @@ Do nothing if outline is on top level or does not exist."
            always (memq (org-element-type elem) '(property-drawer keyword))
            do (goto-char (org-element-property :end elem))))
 
+(defun org-archive-mirror-plain ()
+  ;; todo: handle file header
+  ;; todo: handle archive cookie
+  (interactive)
+  (when (region-active-p)
+    (when (org-with-wide-buffer
+           (narrow-to-region (region-beginning) (region-end))
+           (goto-char (point-min))
+           (outline-next-heading))
+      (user-error "only plain stuff"))
+    (let* ((start (org-with-wide-buffer
+                   (goto-char (region-beginning))
+                   (forward-line 0)
+                   (while (looking-at "\n")
+                     (forward-char 1))
+                   (goto-char (org-element-property :begin (org-element-at-point)))
+                   (forward-line 0)
+                   (point)))
+           (end (org-with-wide-buffer
+                 (goto-char (region-end))
+                 (while (looking-back "\n" 1)
+                   (backward-char 1))
+                 (end-of-line)
+                 (goto-char (org-element-property :end (org-element-at-point)))
+                 (end-of-line)
+                 (point))))
+      (goto-char start)
+      (push-mark end)
+      (activate-mark))))
+
 (provide 'org-archive-subtree-preserve-structure)
 
 ;;; org-archive-subtree-preserve-structure.el ends here
