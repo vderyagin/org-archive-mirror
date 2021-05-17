@@ -35,6 +35,7 @@
 
 (require 'org)
 (require 'org-archive)
+(require 'org-element)
 (require 'subr-x)
 
 (defgroup org-archive-subtree-preserve-structure nil
@@ -52,6 +53,16 @@ invoked at the entry to be archived. Default implementation
 uses `org-archive-location' to determine the file."
   :group 'org-archive-subtree-preserve-structure
   :type 'function)
+
+(defcustom org-archive-subtree-preserve-structure-archive-note
+  "Some contents from this file is archived [[file:%s][here]]"
+  "Text to be inserted in file after archiving any contents from
+  it. '%s' is replaced with path to archive file. Set to `nil' to
+  disable adding note."
+  :group 'org-archive-subtree-preserve-structure
+  :type '(choice
+          (string :tag "Archive note")
+          (const :tag "Off" nil)))
 
 (defun oasps/leaf-heading-p ()
   "True if heading at point does not have any child headings"
@@ -221,7 +232,8 @@ Do nothing if outline is on top level or does not exist."
          org-loop-over-headlines-in-active-region
          scope
          (if (outline-invisible-p) (org-end-of-subtree nil t))))
-    (org-archive-subtree-preserve-structure-1)))
+    (org-archive-subtree-preserve-structure-1))
+  (oasps/insert-cookie))
 
 (defun org-archive-whole-file ()
   (interactive)
@@ -241,6 +253,7 @@ Do nothing if outline is on top level or does not exist."
   (oasps/whole-file-archive-cleanup archive-file))
 
 (defun oasps/archive-content-before-headings (archive-buffer)
+  ;; todo: drop cookie
   (when-let ((content-before-headings
               (org-with-wide-buffer
                (goto-char (point-min))
@@ -257,11 +270,10 @@ Do nothing if outline is on top level or does not exist."
 
 (defun oasps/archive-all-headings-in-buffer ()
   (org-with-wide-buffer
-   (goto-char (point-min))
-   (while (< (point) (point-max))
-     (if (org-at-heading-p)
-         (org-archive-subtree-preserve-structure-1)
-       (outline-next-heading)))))
+   (set-mark (point-min))
+   (goto-char (point-max))
+   (activate-mark)
+   (call-interactively #'org-archive-subtree-preserve-structure)))
 
 (defun oasps/insert-context (context archive-buffer)
   (with-current-buffer archive-buffer
@@ -280,32 +292,32 @@ Do nothing if outline is on top level or does not exist."
      org-archive-save-context-info)))
 
 (defun oasps/file-context ()
-    (let* ((time (format-time-string
-                  (substring (cdr org-time-stamp-formats) 1 -1)))
-           (file (abbreviate-file-name
-                  (or (buffer-file-name (buffer-base-buffer))
-                      (error "No file associated to buffer"))))
-           (all-tags (org-get-tags))
-           (local-tags
-            (cl-remove-if (lambda (tag)
-                            (get-text-property 0 'inherited tag))
-                          all-tags))
-           (inherited-tags
-            (cl-remove-if-not (lambda (tag)
-                                (get-text-property 0 'inherited tag))
-                              all-tags)))
-      (list
-       (cons 'category (org-get-category nil 'force-refresh))
-       (cons 'file file)
-       (cons 'itags (mapconcat #'identity inherited-tags " "))
-       (cons 'ltags (mapconcat #'identity local-tags " "))
-       (cons 'time time))))
+  (let* ((time (format-time-string
+                (substring (cdr org-time-stamp-formats) 1 -1)))
+         (file (abbreviate-file-name
+                (or (buffer-file-name (buffer-base-buffer))
+                    (error "No file associated to buffer"))))
+         (all-tags (org-get-tags))
+         (local-tags
+          (cl-remove-if (lambda (tag)
+                          (get-text-property 0 'inherited tag))
+                        all-tags))
+         (inherited-tags
+          (cl-remove-if-not (lambda (tag)
+                              (get-text-property 0 'inherited tag))
+                            all-tags)))
+    (list
+     (cons 'category (org-get-category nil 'force-refresh))
+     (cons 'file file)
+     (cons 'itags (mapconcat #'identity inherited-tags " "))
+     (cons 'ltags (mapconcat #'identity local-tags " "))
+     (cons 'time time))))
 
 (defun oasps/simple-whole-file-archive (archive-file)
   (thread-first archive-file
     file-name-directory
     (make-directory 'parents))
-
+  ;; todo: drop cookie
   (org-with-wide-buffer
    (write-region nil nil archive-file nil nil nil 'excl))
 
@@ -349,9 +361,33 @@ Do nothing if outline is on top level or does not exist."
   (org-with-wide-buffer
    (cl-loop initially (goto-char (point-min))
             until (eobp)
-            thereis (and (org-at-heading-p)
-                         (org-entry-get (point) "ARCHIVE_FILE"))
+            thereis (when-let* (((org-at-heading-p))
+                                (file (org-entry-get (point) "ARCHIVE_FILE"))
+                                ((file-exists-p file)))
+                      file)
             do (outline-next-heading))))
+
+(defun oasps/insert-cookie ()
+  (when-let* ((note-format org-archive-subtree-preserve-structure-archive-note)
+              (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
+              (cookie (format org-archive-subtree-preserve-structure-archive-note archive-file))
+              ((org-with-wide-buffer
+                (goto-char (point-min))
+                ;; buffer must have some content, and not have link to archvie file already
+                (and (re-search-forward "[^ \r\t\n]" nil 'noerror)
+                     (not (save-excursion (search-forward cookie nil 'noerror)))
+                     (not (save-excursion (search-forward archive-file nil 'noerror)))))))
+    (org-with-wide-buffer
+     (oasps/goto-cookie-location)
+     (while (looking-back "\n\n" 2)
+       (delete-char -1))
+     (insert "\n" cookie "\n\n"))))
+
+(defun oasps/goto-cookie-location ()
+  (cl-loop initially (goto-char (point-min))
+           for elem = (org-element-at-point)
+           always (memq (org-element-type elem) '(property-drawer keyword))
+           do (goto-char (org-element-property :end elem))))
 
 (provide 'org-archive-subtree-preserve-structure)
 
