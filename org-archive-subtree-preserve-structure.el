@@ -368,13 +368,13 @@ Do nothing if outline is on top level or does not exist."
             do (outline-next-heading))))
 
 (defun oasps/insert-cookie ()
-  (when-let* ((note-format org-archive-subtree-preserve-structure-archive-note)
+  (when-let* ((note-format-string org-archive-subtree-preserve-structure-archive-note)
               (archive-file (funcall org-archive-subtree-preserve-structure-file-function))
-              (cookie (format org-archive-subtree-preserve-structure-archive-note archive-file))
+              (cookie (format note-format-string archive-file))
               ((org-with-wide-buffer
                 (goto-char (point-min))
-                ;; buffer must have some content, and not have link to archvie file already
-                (and (re-search-forward "[^ \r\t\n]" nil 'noerror)
+                ;; buffer must have some content, and not have any links to archive file already:
+                (and (save-excursion (re-search-forward "[^ \r\t\n]" nil 'noerror))
                      (not (save-excursion (search-forward cookie nil 'noerror)))
                      (not (save-excursion (search-forward archive-file nil 'noerror)))))))
     (org-with-wide-buffer
