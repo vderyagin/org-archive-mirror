@@ -1,11 +1,11 @@
-(describe "oasps/leaf-heading-p"
+(describe "org-archive-mirror--leaf-heading-p"
   (it "accepts an empty heading"
     (with-org "* foo"
-      (expect (oasps/leaf-heading-p) :to-be-truthy)))
+      (expect (org-archive-mirror--leaf-heading-p) :to-be-truthy)))
 
   (it "accepts a heading with some plain text content"
     (with-org "* TODO foo\nfoo bar baz"
-      (expect (oasps/leaf-heading-p) :to-be-truthy)))
+      (expect (org-archive-mirror--leaf-heading-p) :to-be-truthy)))
 
   (it "accepts deeply nested heading with siblings"
     (with-org "* foo
@@ -13,11 +13,11 @@
 *** baz
 *** <POINT>quux
 *** corge"
-      (expect (oasps/leaf-heading-p) :to-be-truthy)))
+      (expect (org-archive-mirror--leaf-heading-p) :to-be-truthy)))
 
   (it "rejects a heading with children"
     (with-org "* foo\n** bar"
-      (expect (oasps/leaf-heading-p) :to-be nil)))
+      (expect (org-archive-mirror--leaf-heading-p) :to-be nil)))
 
   (it "does not explode when called outside of any subtree"
-    (with-org "" (oasps/leaf-heading-p))))
+    (with-org "" (org-archive-mirror--leaf-heading-p))))

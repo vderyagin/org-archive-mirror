@@ -1,4 +1,4 @@
-(require 'org-archive-subtree-preserve-structure)
+(require 'org-archive-mirror)
 (require 'cl-macs)
 
 (defmacro with-org (text &rest body)

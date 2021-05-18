@@ -1,6 +1,6 @@
 (source melpa)
 
-(package-file "org-archive-subtree-preserve-structure.el")
+(package-file "org-archive-mirror.el")
 
 (development
  (depends-on "buttercup"))
