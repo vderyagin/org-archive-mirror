@@ -169,7 +169,7 @@ Do nothing if outline is on top level or does not exist."
                  do (org-archive-mirror--deduplicate-heading (org-archive-mirror--get-full-outline-path))
                  always (outline-get-next-sibling))))))
 
-(defun org-archive-mirror--insert-content (point-or-marker content)
+(defun org-archive-mirror--insert-content-at-heading (point-or-marker content)
   (when content
     (org-with-point-at point-or-marker
       (save-restriction
@@ -188,7 +188,7 @@ Do nothing if outline is on top level or does not exist."
                  for first-instance = (org-archive-mirror--heading-location outline)
                  for content = (org-archive-mirror--remove-heading-extract-children first-instance)
                  for second-instance = (org-archive-mirror--heading-location outline)
-                 do (org-archive-mirror--insert-content second-instance content)
+                 do (org-archive-mirror--insert-content-at-heading second-instance content)
                  while (org-archive-mirror--heading-duplicated-p outline)
                  finally (org-archive-mirror--deduplicate-children outline))))))
 
@@ -403,38 +403,68 @@ Do nothing if outline is on top level or does not exist."
 (defun org-archive-mirror--goto-cookie-location ()
   (cl-loop initially (goto-char (point-min))
            for elem = (org-element-at-point)
-           always (memq (org-element-type elem) '(property-drawer keyword))
-           do (goto-char (org-element-property :end elem))))
+           while (memq (org-element-type elem) '(property-drawer keyword))
+           do (goto-char (org-element-property :end elem))
+           finally (while (looking-back "\n\n\n" 3) (forward-line -1))))
+
+(defun org-archive-mirror--around-empty-line-p (point)
+  "Return `t' if POINT is either on, or immediately
+preceding/following an empty line, `nil' otherwise."
+  (org-with-wide-buffer
+   (goto-char point)
+   (or (and (looking-at "\n")
+            (looking-back "\n" 1))
+       (looking-at "\n\n")
+       (looking-back "\n\n" 2))))
+
+(defun org-archive-mirror--includes-headings-p (beg end)
+  (org-with-wide-buffer
+   (narrow-to-region beg end)
+   (goto-char (point-min))
+   (or (org-at-heading-p)
+       (outline-next-heading))))
 
 (defun org-archive-mirror-plain ()
-  ;; todo: handle file header
-  ;; todo: handle archive cookie
   (interactive)
-  (when (region-active-p)
-    (when (org-with-wide-buffer
-           (narrow-to-region (region-beginning) (region-end))
-           (goto-char (point-min))
-           (outline-next-heading))
-      (user-error "only plain stuff"))
-    (let* ((start (org-with-wide-buffer
-                   (goto-char (region-beginning))
-                   (while (looking-at "\n")
-                     (forward-char 1))
-                   (forward-line 0)
-                   (goto-char (org-element-property :begin (org-element-at-point)))
-                   (forward-line 0)
-                   (point)))
-           (end (org-with-wide-buffer
-                 (goto-char (region-end))
-                 (while (looking-back "\n" 1)
-                   (backward-char 1))
-                 (end-of-line)
-                 (goto-char (org-element-property :end (org-element-at-point)))
-                 (end-of-line)
-                 (point))))
-      (goto-char start)
-      (push-mark end)
-      (activate-mark))))
+
+  (unless (region-active-p)
+    (user-error "Region must be selected"))
+
+  (when (org-archive-mirror--includes-headings-p (region-beginning) (region-end))
+    (user-error "Can not archive headings this way"))
+
+  (unless (and (org-archive-mirror--around-empty-line-p (region-beginning))
+               (org-archive-mirror--around-empty-line-p (region-end)))
+    (user-error "Region has to begin and end with an empty line"))
+
+  (when (> (org-with-wide-buffer
+            (org-archive-mirror--goto-cookie-location)
+            (forward-line 1)
+            (point))
+           (region-beginning))
+    (user-error "Can not archive file header"))
+
+  (let* ((outline-path (unless (zerop (org-outline-level))
+                         (org-archive-mirror--get-full-outline-path)))
+         (archived-content (delete-and-extract-region (region-beginning) (region-end)))
+         (archive-file (funcall org-archive-mirror-archive-file-function))
+         (archive-buffer (or (find-buffer-visiting archive-file)
+                             (find-file-noselect archive-file))))
+    (with-current-buffer archive-buffer
+      (org-with-wide-buffer
+       (if outline-path
+           (progn
+             (org-archive-mirror--insert-outline outline-path)
+             (goto-char (org-archive-mirror--heading-location outline-path))
+             (org-narrow-to-subtree)
+             (outline-next-heading))
+         (goto-char (point-min))
+         (or (org-at-heading-p)
+             (outline-next-heading)))
+       (org-archive-mirror--maybe-insert-newline)
+       (insert (string-trim archived-content) "\n"))))
+
+  (org-archive-mirror--insert-cookie))
 
 (provide 'org-archive-mirror)
 
