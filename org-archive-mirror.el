@@ -77,8 +77,17 @@ uses `org-archive-location' to determine the file."
     (insert "\n")))
 
 (defun org-archive-mirror--get-full-outline-path ()
-  (append (org-get-outline-path)
-          (list (nth 4 (org-heading-components)))))
+  (let ((progress-indicator-regexp
+         (rx (+ " ")
+             "["
+             (or (any "/" "%")                              ; "[/]" and "[%]" cases
+                 (and (+ (any digit)) "%")                  ; "[x%]" case
+                 (and (+ (any digit)) "/" (+ (any digit)))) ; "[x/y]" case
+             "]" string-end)))
+    (append (org-get-outline-path)
+            (list (replace-regexp-in-string
+                   progress-indicator-regexp ""
+                   (nth 4 (org-heading-components)))))))
 
 (defun org-archive-mirror--goto-heading (text level)
   "If heading TEXT on level LEVEL exists, move point just past it

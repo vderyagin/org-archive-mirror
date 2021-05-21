@@ -23,6 +23,13 @@
               :to-equal
               "* foo\n** one\n** two\n** three")))
 
+  (it "leaves the last instance, if headings have progress indicators in square brackets"
+    (with-org "* foo [0/3]\n** one\n* foo [1/3]\n** two\n* foo [3/3]\n** three"
+      (org-archive-mirror--deduplicate-heading '("foo"))
+      (expect (buffer-string)
+              :to-equal
+              "* foo [3/3]\n** one\n** two\n** three")))
+
   (it "deduplicates children recursively"
     (with-org "* foo
 ** bar
