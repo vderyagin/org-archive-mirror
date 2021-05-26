@@ -396,8 +396,9 @@ Do nothing if outline is on top level or does not exist."
                      (not (save-excursion (search-forward archive-file nil 'noerror)))))))
     (org-with-wide-buffer
      (org-archive-mirror--goto-cookie-location)
-     (while (looking-back "\n\n" 2)
-       (delete-char -1))
+     (or (< (point) 2)
+         (while (looking-back "\n\n" 2)
+           (delete-char -1)))
      (insert "\n" cookie "\n\n"))))
 
 (defun org-archive-mirror--goto-cookie-location ()
@@ -405,7 +406,8 @@ Do nothing if outline is on top level or does not exist."
            for elem = (org-element-at-point)
            while (memq (org-element-type elem) '(property-drawer keyword))
            do (goto-char (org-element-property :end elem))
-           finally (while (looking-back "\n\n\n" 3) (forward-line -1))))
+           finally (or (< (point) 3)
+                       (while (looking-back "\n\n\n" 3) (forward-line -1)))))
 
 (defun org-archive-mirror--around-empty-line-p (point)
   "Return `t' if POINT is either on, or immediately
