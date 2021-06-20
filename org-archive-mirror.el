@@ -192,10 +192,16 @@ Do nothing if outline is on top level or does not exist."
                  while (org-archive-mirror--heading-duplicated-p outline)
                  finally (org-archive-mirror--deduplicate-children outline))))))
 
+(defun org-archive-mirror--get-archive-file ()
+  (when-let (file (funcall org-archive-mirror-archive-file-function))
+    (when (string= file (buffer-file-name))
+      (user-error "org-archive-mirror: archive file can't match the original file"))
+    file))
+
 (defun org-archive-mirror--archive-subtree ()
   (let* ((outline-path (org-archive-mirror--get-full-outline-path))
          (parent-outline-path (butlast outline-path))
-         (archive-file (funcall org-archive-mirror-archive-file-function))
+         (archive-file (org-archive-mirror--get-archive-file))
          (archive-buffer (or (find-buffer-visiting archive-file)
                              (find-file-noselect archive-file)))
          (org-archive-location (format
@@ -246,7 +252,7 @@ Do nothing if outline is on top level or does not exist."
 
 (defun org-archive-whole-file ()
   (interactive)
-  (let ((archive-file (funcall org-archive-mirror-archive-file-function)))
+  (let ((archive-file (org-archive-mirror--get-archive-file)))
     (if (file-exists-p archive-file)
         (org-archive-mirror--complex-whole-file-archive archive-file)
       (org-archive-mirror--simple-whole-file-archive archive-file))))
@@ -358,7 +364,7 @@ Do nothing if outline is on top level or does not exist."
 
   (if-let* ((other-file (if (org-archive-mirror--in-archive-p)
                             (org-archive-mirror--find-archive-source)
-                          (funcall org-archive-mirror-archive-file-function)))
+                          (org-archive-mirror--get-archive-file)))
             (other-file-full-path (expand-file-name other-file))
             ((file-exists-p other-file-full-path)))
       (find-file (expand-file-name other-file))
@@ -386,7 +392,7 @@ Do nothing if outline is on top level or does not exist."
 
 (defun org-archive-mirror--insert-cookie ()
   (when-let* ((note-format-string org-archive-mirror-note)
-              (archive-file (funcall org-archive-mirror-archive-file-function))
+              (archive-file (org-archive-mirror--get-archive-file))
               (cookie (format note-format-string (abbreviate-file-name archive-file)))
               ((org-with-wide-buffer
                 (goto-char (point-min))
@@ -449,7 +455,7 @@ preceding/following an empty line, `nil' otherwise."
   (let* ((outline-path (unless (zerop (org-outline-level))
                          (org-archive-mirror--get-full-outline-path)))
          (archived-content (delete-and-extract-region (region-beginning) (region-end)))
-         (archive-file (funcall org-archive-mirror-archive-file-function))
+         (archive-file (org-archive-mirror--get-archive-file))
          (archive-buffer (or (find-buffer-visiting archive-file)
                              (find-file-noselect archive-file))))
     (with-current-buffer archive-buffer
