@@ -134,7 +134,7 @@ and return a truthy value, move to (point-max) and return nil otherwise"
                         (goto-char (point-min)))
             with level = (length outline)
             with heading = (car (last outline))
-            while (< (point) (point-max))
+            until (eobp)
             count (org-archive-mirror--goto-heading heading level)
             into heading-occurrences
             if (>= heading-occurrences 2) return t)))
