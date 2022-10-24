@@ -73,7 +73,7 @@ uses `org-archive-location' to determine the file."
        (>= (point) subtree-end)))))
 
 (defun org-archive-mirror--maybe-insert-newline ()
-  (unless (looking-back "\n\\|\\`" 1)
+  (unless (looking-back "\n\\|\\`" (- (point) 1))
     (insert "\n")))
 
 (defun org-archive-mirror--get-full-outline-path ()
@@ -156,7 +156,7 @@ Do nothing if outline is on top level or does not exist."
 
     (org-with-point-at point-or-marker
       (delete-region (point) (save-excursion (org-end-of-subtree 'invisible-ok)))
-      (while (looking-at "\n")
+      (while (looking-at-p "\n")
         (delete-char 1)))))
 
 (defun org-archive-mirror--deduplicate-children (parent-outline)
@@ -403,7 +403,7 @@ Do nothing if outline is on top level or does not exist."
     (org-with-wide-buffer
      (org-archive-mirror--goto-cookie-location)
      (or (< (point) 2)
-         (while (looking-back "\n\n" 2)
+         (while (looking-back "\n\n" (- (point) 2))
            (delete-char -1)))
      (insert "\n" cookie "\n\n"))))
 
@@ -413,17 +413,17 @@ Do nothing if outline is on top level or does not exist."
            while (memq (org-element-type elem) '(property-drawer keyword))
            do (goto-char (org-element-property :end elem))
            finally (or (< (point) 3)
-                       (while (looking-back "\n\n\n" 3) (forward-line -1)))))
+                       (while (looking-back "\n\n\n" (- (point) 3)) (forward-line -1)))))
 
 (defun org-archive-mirror--around-empty-line-p (point)
   "Return `t' if POINT is either on, or immediately
 preceding/following an empty line, `nil' otherwise."
   (org-with-wide-buffer
    (goto-char point)
-   (or (and (looking-at "\n")
-            (looking-back "\n" 1))
-       (looking-at "\n\n")
-       (looking-back "\n\n" 2))))
+   (or (and (looking-at-p "\n")
+            (looking-back "\n" (- (point) 1)))
+       (looking-at-p "\n\n")
+       (looking-back "\n\n" (- (point) 2)))))
 
 (defun org-archive-mirror--includes-headings-p (beg end)
   (org-with-wide-buffer
