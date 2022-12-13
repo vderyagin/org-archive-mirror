@@ -167,7 +167,7 @@ Do nothing if outline is on top level or does not exist."
                                      (org-end-of-subtree 'invisible-ok))
                  while (< (point) subtree-end)
                  do (org-archive-mirror--deduplicate-heading (org-archive-mirror--get-full-outline-path))
-                 always (outline-get-next-sibling))))))
+                 always (org-get-next-sibling))))))
 
 (defun org-archive-mirror--insert-content-at-heading (point-or-marker content)
   (when content
@@ -246,7 +246,7 @@ Do nothing if outline is on top level or does not exist."
                  (org-archive-mirror--archive-subtree))
          org-loop-over-headlines-in-active-region
          scope
-         (if (outline-invisible-p) (org-end-of-subtree nil t))))
+         (if (org-invisible-p) (org-end-of-subtree nil t))))
     (org-archive-mirror--archive-subtree))
   (org-archive-mirror--insert-cookie))
 

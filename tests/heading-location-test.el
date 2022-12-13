@@ -21,7 +21,7 @@
               :to-be
               (save-excursion
                 (search-forward "quux")
-                (outline-back-to-heading)
+                (org-back-to-heading)
                 (point)))))
 
   (it "handles tags and todo keywords well"
@@ -30,7 +30,7 @@
               :to-be
               (save-excursion
                 (search-forward "bar")
-                (outline-back-to-heading)
+                (org-back-to-heading)
                 (point)))))
 
   (it "is not confused by heading of same name in different branches"
@@ -39,5 +39,5 @@
               :to-be
               (save-excursion
                 (search-forward ":correct:")
-                (outline-back-to-heading)
+                (org-back-to-heading)
                 (point))))))
