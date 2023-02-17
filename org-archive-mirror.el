@@ -54,16 +54,6 @@ uses `org-archive-location' to determine the file."
   :group 'org-archive-mirror
   :type 'function)
 
-(defcustom org-archive-mirror-note
-  "Some contents from this file is archived [[file:%s][here]]"
-  "Text to be inserted in file after archiving any contents from
-  it. '%s' is replaced with path to archive file. Set to `nil' to
-  disable adding note."
-  :group 'org-archive-mirror
-  :type '(choice
-          (string :tag "Archive note")
-          (const :tag "Off" nil)))
-
 (defun org-archive-mirror--leaf-heading-p ()
   "True if heading at point does not have any child headings"
   (unless (zerop (org-outline-level))
@@ -247,8 +237,7 @@ Do nothing if outline is on top level or does not exist."
          org-loop-over-headlines-in-active-region
          scope
          (if (org-invisible-p) (org-end-of-subtree nil t))))
-    (org-archive-mirror--archive-subtree))
-  (org-archive-mirror--insert-cookie))
+    (org-archive-mirror--archive-subtree)))
 
 (defun org-archive-whole-file ()
   (interactive)
@@ -390,31 +379,6 @@ Do nothing if outline is on top level or does not exist."
                       file)
             do (outline-next-heading))))
 
-(defun org-archive-mirror--insert-cookie ()
-  (when-let* ((note-format-string org-archive-mirror-note)
-              (archive-file (org-archive-mirror--get-archive-file))
-              (cookie (format note-format-string (abbreviate-file-name archive-file)))
-              ((org-with-wide-buffer
-                (goto-char (point-min))
-                ;; buffer must have some content, and not have any links to archive file already:
-                (and (save-excursion (re-search-forward "[^ \r\t\n]" nil 'noerror))
-                     (not (save-excursion (search-forward cookie nil 'noerror)))
-                     (not (save-excursion (search-forward archive-file nil 'noerror)))))))
-    (org-with-wide-buffer
-     (org-archive-mirror--goto-cookie-location)
-     (or (< (point) 2)
-         (while (looking-back "\n\n" (- (point) 2))
-           (delete-char -1)))
-     (insert "\n" cookie "\n\n"))))
-
-(defun org-archive-mirror--goto-cookie-location ()
-  (cl-loop initially (goto-char (point-min))
-           for elem = (org-element-at-point)
-           while (memq (org-element-type elem) '(property-drawer keyword))
-           do (goto-char (org-element-property :end elem))
-           finally (or (< (point) 3)
-                       (while (looking-back "\n\n\n" (- (point) 3)) (forward-line -1)))))
-
 (defun org-archive-mirror--around-empty-line-p (point)
   "Return `t' if POINT is either on, or immediately
 preceding/following an empty line, `nil' otherwise."
@@ -445,13 +409,6 @@ preceding/following an empty line, `nil' otherwise."
                (org-archive-mirror--around-empty-line-p (region-end)))
     (user-error "Region has to begin and end with an empty line"))
 
-  (when (> (org-with-wide-buffer
-            (org-archive-mirror--goto-cookie-location)
-            (forward-line 1)
-            (point))
-           (region-beginning))
-    (user-error "Can not archive file header"))
-
   (let* ((outline-path (unless (zerop (org-outline-level))
                          (org-archive-mirror--get-full-outline-path)))
          (archived-content (delete-and-extract-region (region-beginning) (region-end)))
@@ -470,9 +427,7 @@ preceding/following an empty line, `nil' otherwise."
          (or (org-at-heading-p)
              (outline-next-heading)))
        (org-archive-mirror--maybe-insert-newline)
-       (insert (string-trim archived-content) "\n"))))
-
-  (org-archive-mirror--insert-cookie))
+       (insert (string-trim archived-content) "\n")))))
 
 (provide 'org-archive-mirror)
 
