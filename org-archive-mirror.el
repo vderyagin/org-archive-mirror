@@ -30,10 +30,8 @@
 
 ;;; Code:
 
-(eval-when-compile
-  (require 'org-macs))
-
 (require 'org)
+(require 'org-macs)
 (require 'org-archive)
 (require 'org-element)
 (require 'subr-x)
