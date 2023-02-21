@@ -20,10 +20,11 @@ By default an archive file is determined according to `org-archive-location` var
 
 ### Jumping between org file and its archive
 
-Emacs got a concept of "sibling file", most commonly a test or a header file. This faciilty can be used for quick switching between org file ant ids archive:
+Emacs got a "sibling file" concept, most commonly referred to a test or a header file associated with source file (or vice versa). This faciilty enables quick switching between org file ant its archive:
 
 ```lisp
-;; `org-directory' must be bound appropriately before evaluating this
+;;; adjust code as needed
+;;; `org-directory' must be bound appropriately before evaluating this
 
 (add-to-list
  'find-sibling-rules
