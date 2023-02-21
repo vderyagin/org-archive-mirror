@@ -17,3 +17,25 @@ This package provides an archiving functionality for org-mode, which makes sure 
 ```
 
 By default an archive file is determined according to `org-archive-location` variable, but if you need to employ more complex logic then it allows, you can set `org-archive-mirror-archive-file-function` to a no-argument function, which, when invoked at the original heading location, must return a path to archive file.
+
+### Jumping between org file and its archive
+
+Emacs got a concept of "sibling file", most commonly a test or a header file. This faciilty can be used for quick switching between org file ant ids archive:
+
+```lisp
+;; `org-directory' must be bound appropriately before evaluating this
+
+(add-to-list
+ 'find-sibling-rules
+ ;; file.org → archive/file.org.gpg
+ (list
+  (rx-to-string (list 'and org-directory '(group "/" (+ not-newline) ".org") '(optional ".gpg") 'string-end) 'no-group)
+  (rx-to-string (list 'and org-directory "/archive" '(backref 1) ".gpg" 'string-end) 'no-group)))
+
+(add-to-list
+ 'find-sibling-rules
+ ;; archive/file.org.gpg → file.org
+ (list
+  (rx-to-string (list 'and org-directory "/archive" '(group "/" (+ not-newline) ".org") ".gpg" 'string-end) 'no-group)
+  (rx-to-string (list 'and org-directory '(backref 1) '(optional ".gpg") 'string-end) 'no-group))))
+```
