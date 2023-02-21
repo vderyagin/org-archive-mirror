@@ -20,7 +20,7 @@ By default an archive file is determined according to `org-archive-location` var
 
 ### Jumping between org file and its archive
 
-Emacs got a "sibling file" concept, most commonly referred to a test or a header file associated with source file (or vice versa). This faciilty enables quick switching between org file ant its archive:
+Since version 29.1 Emacs got a "sibling file" concept, something like a test or a header file associated with source file (or vice versa), and a `find-sibling-file` command for switching to a sibling of current file. This facility enables quick switching between org file and its archive:
 
 ```lisp
 ;;; adjust code as needed
@@ -40,3 +40,5 @@ Emacs got a "sibling file" concept, most commonly referred to a test or a header
   (rx-to-string (list 'and org-directory "/archive" '(group "/" (+ not-newline) ".org") ".gpg" 'string-end) 'no-group)
   (rx-to-string (list 'and org-directory '(backref 1) '(optional ".gpg") 'string-end) 'no-group))))
 ```
+
+(bind `find-sibling-file` command to a key binding for convenience)
