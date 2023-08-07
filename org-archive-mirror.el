@@ -61,7 +61,8 @@ uses `org-archive-location' to determine the file."
        (>= (point) subtree-end)))))
 
 (defun org-archive-mirror--maybe-insert-newline ()
-  (unless (looking-back "\n\\|\\`" (- (point) 1))
+  (unless (save-excursion
+            (re-search-backward "\n\\|\\`" (- (point) 1) 'no-error 1))
     (insert "\n")))
 
 (defun org-archive-mirror--get-full-outline-path ()
@@ -383,9 +384,9 @@ preceding/following an empty line, `nil' otherwise."
   (org-with-wide-buffer
    (goto-char point)
    (or (and (looking-at-p "\n")
-            (looking-back "\n" (- (point) 1)))
+            (re-search-backward "\n" (- (point) 1) 'no-error 1))
        (looking-at-p "\n\n")
-       (looking-back "\n\n" (- (point) 2)))))
+       (re-search-backward "\n\n" (- (point) 2) 'no-error 1))))
 
 (defun org-archive-mirror--includes-headings-p (beg end)
   (org-with-wide-buffer
