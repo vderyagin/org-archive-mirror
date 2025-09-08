@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (describe "org-archive-mirror--remove-heading-extract-children"
   (it "removes empty heading"
     (with-org "* foo"

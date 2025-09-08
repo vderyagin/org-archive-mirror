@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (describe "org-archive-mirror--deduplicate-heading"
   (it "does nothing if heading is not duplicated"
     (let ((content "* foo\n** bar"))

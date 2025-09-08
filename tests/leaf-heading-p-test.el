@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (describe "org-archive-mirror--leaf-heading-p"
   (it "accepts an empty heading"
     (with-org "* foo"

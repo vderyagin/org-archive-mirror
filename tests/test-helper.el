@@ -1,9 +1,11 @@
+;;; -*- lexical-binding: t -*-
+
 (require 'org-archive-mirror)
 (require 'cl-macs)
 
 (defmacro with-org (text &rest body)
   (declare (indent 1))
-  (let ((position (cl-gensym)))
+  (let ((position (gensym)))
     `(with-temp-buffer
        (org-mode)
        (insert ,text)

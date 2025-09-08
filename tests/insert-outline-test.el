@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (describe "org-archive-mirror--insert-outline"
   (it "does nothing if no outline provided"
     (with-org ""

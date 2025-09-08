@@ -1,3 +1,5 @@
+;;; -*- lexical-binding: t -*-
+
 (describe "org-archive-mirror--heading-location"
   (it "returns nil when called with empty outline"
     (with-org ""
