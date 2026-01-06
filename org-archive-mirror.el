@@ -431,6 +431,26 @@ Do nothing if outline is on top level or does not exist."
       nil nil 'headline)
     (nreverse properties)))
 
+(defun org-archive-mirror--first-headline ()
+  (org-archive-mirror--without-element-cache
+   (org-element-map (org-element-parse-buffer) 'headline
+     #'identity nil 'first-match)))
+
+(defun org-archive-mirror--first-child-headline (headline)
+  (let ((begin (org-element-property :begin headline))
+        (end (org-element-property :end headline))
+        (level (org-element-property :level headline)))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (candidate)
+         (let ((candidate-begin (org-element-property :begin candidate))
+               (candidate-level (org-element-property :level candidate)))
+           (when (and (> candidate-begin begin)
+                      (< candidate-begin end)
+                      (> candidate-level level))
+             candidate)))
+       nil 'first-match))))
+
 (defun org-archive-mirror--in-archive-p ()
   (org-with-wide-buffer
     (org-archive-mirror--without-element-cache
@@ -467,9 +487,11 @@ preceding/following an empty line, `nil' otherwise."
 
 (defun org-archive-mirror--includes-headings-p (beg end)
   (org-with-wide-buffer
-    (org-archive-mirror--without-element-cache
-     (org-element-map (org-element-parse-region beg end) 'headline
-       #'identity nil 'first-match))))
+    (save-restriction
+      (narrow-to-region beg end)
+      (org-archive-mirror--without-element-cache
+       (org-element-map (org-element-parse-buffer) 'headline
+         #'identity nil 'first-match)))))
 
 (defun org-archive-mirror--headline-boundary (position boundary)
   (org-with-point-at position
@@ -509,17 +531,21 @@ preceding/following an empty line, `nil' otherwise."
                              (find-file-noselect archive-file))))
     (with-current-buffer archive-buffer
       (org-with-wide-buffer
-       (if outline-path
-           (progn
-             (org-archive-mirror--insert-outline outline-path)
-             (goto-char (org-archive-mirror--heading-location outline-path))
-             (org-narrow-to-subtree)
-             (outline-next-heading))
-         (goto-char (point-min))
-         (or (org-at-heading-p)
-             (outline-next-heading)))
-       (org-archive-mirror--maybe-insert-newline)
-       (insert (string-trim archived-content) "\n")))))
+       (let ((insert-position
+              (if outline-path
+                  (progn
+                    (org-archive-mirror--insert-outline outline-path)
+                    (when-let* ((headline (org-archive-mirror--find-headline-by-outline outline-path)))
+                      (if-let* ((child (org-archive-mirror--first-child-headline headline)))
+                          (org-element-property :begin child)
+                        (or (org-element-property :contents-end headline)
+                            (org-element-property :end headline)))))
+                (if-let* ((first-headline (org-archive-mirror--first-headline)))
+                    (org-element-property :begin first-headline)
+                  (point-max)))))
+         (goto-char insert-position)
+         (org-archive-mirror--maybe-insert-newline)
+         (insert (string-trim archived-content) "\n"))))))
 
 (provide 'org-archive-mirror)
 
