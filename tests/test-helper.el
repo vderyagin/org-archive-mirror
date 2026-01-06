@@ -1,10 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 
-(let ((root (file-name-directory
-             (directory-file-name
-              (file-name-directory (or load-file-name buffer-file-name))))))
-  (load-file (expand-file-name "org-archive-mirror.el" root)))
-(require 'cl-macs)
+(require 'org-archive-mirror)
 
 (setq org-element-use-cache nil)
 
