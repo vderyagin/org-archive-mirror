@@ -214,21 +214,14 @@ and return a truthy value, return nil otherwise."
 (defun org-archive-mirror--heading-duplicated-p (outline)
   (when outline
     (let ((normalized (org-archive-mirror--normalize-outline outline))
-          (stack nil)
           (occurrences 0))
       (org-with-wide-buffer
-       (org-archive-mirror--without-element-cache
-        (org-element-map (org-element-parse-buffer) 'headline
-          (lambda (headline)
-            (let* ((level (org-element-property :level headline))
-                   (title (org-archive-mirror--headline-title headline)))
-              (setq stack (org-archive-mirror--update-outline-stack stack level title))
-              (when (equal stack normalized)
-                (setq occurrences (1+ occurrences))
-                (when (> occurrences 1)
-                  headline))))
-          nil 'first-match)
-        (> occurrences 1))))))
+       (org-archive-mirror--map-headlines-with-path
+        (lambda (_headline path)
+          (when (equal path normalized)
+            (setq occurrences (1+ occurrences))
+            (when (> occurrences 1) t))))
+       (> occurrences 1)))))
 
 (defun org-archive-mirror--outline-has-children-p (outline)
   (let ((normalized (org-archive-mirror--normalize-outline outline))
