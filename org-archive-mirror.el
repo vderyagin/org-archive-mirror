@@ -74,8 +74,7 @@ uses `org-archive-location' to determine the file."
              #'identity nil 'first-match)))))
 
 (defun org-archive-mirror--maybe-insert-newline ()
-  (unless (save-excursion
-            (re-search-backward "\n\\|\\`" (- (point) 1) 'no-error 1))
+  (unless (bolp)
     (insert "\n")))
 
 (defun org-archive-mirror--strip-progress-cookie (title)
