@@ -68,7 +68,7 @@ uses `org-archive-location' to determine the file."
 (defun org-archive-mirror--leaf-heading-p ()
   "True if heading at point does not have any child headings."
   (org-with-wide-buffer
-   (when-let* ((result (org-archive-mirror--find-path-at-point))
+   (when-let* ((result (org-archive-mirror--headline-and-path-at-point))
                (headline (car result)))
      (null (org-element-map (org-element-contents headline) 'headline
              #'identity nil 'first-match)))))
@@ -142,7 +142,7 @@ Always visits all headlines. Return value is undefined."
        (when (equal path normalized) headline)))))
 
 (defun org-archive-mirror--get-full-outline-path ()
-  (when-let* ((result (org-archive-mirror--find-path-at-point)))
+  (when-let* ((result (org-archive-mirror--headline-and-path-at-point)))
     (cadr result)))
 
 (defun org-archive-mirror--find-next-headline (text level position)
@@ -158,21 +158,15 @@ Always visits all headlines. Return value is undefined."
              headline)))
        nil 'first-match))))
 
-(defun org-archive-mirror--find-path-at-point ()
+(defun org-archive-mirror--headline-and-path-at-point ()
   (let ((pos (point))
-        (stack nil)
         result)
-    (org-archive-mirror--without-element-cache
-     (org-element-map (org-element-parse-buffer) 'headline
-       (lambda (headline)
-         (let* ((level (org-element-property :level headline))
-                (title (org-archive-mirror--headline-title headline))
-                (begin (org-element-property :begin headline))
-                (end (org-element-property :end headline)))
-           (setq stack (org-archive-mirror--update-outline-stack stack level title))
-           (when (and (<= begin pos) (< pos end))
-             (setq result (list headline (copy-sequence stack))))))
-       nil nil))
+    (org-archive-mirror--for-each-headline-with-path
+     (lambda (headline path)
+       (let ((begin (org-element-property :begin headline))
+             (end (org-element-property :end headline)))
+         (when (and (<= begin pos) (< pos end))
+           (setq result (list headline path))))))
     result))
 
 (defun org-archive-mirror--goto-heading (text level)
@@ -266,7 +260,7 @@ Do nothing if outline is on top level or does not exist."
 (defun org-archive-mirror--remove-heading-extract-children (point-or-marker)
   (let (children)
     (org-with-point-at point-or-marker
-      (when-let* ((result (org-archive-mirror--find-path-at-point))
+      (when-let* ((result (org-archive-mirror--headline-and-path-at-point))
                   (headline (car result)))
         (let* ((headline-begin (org-element-property :begin headline))
                (headline-end (org-element-property :end headline))
@@ -475,7 +469,7 @@ preceding/following an empty line, `nil' otherwise."
 (defun org-archive-mirror--headline-boundary (position boundary)
   (org-with-point-at position
     (org-archive-mirror--without-element-cache
-     (if-let* ((result (org-archive-mirror--find-path-at-point)))
+     (if-let* ((result (org-archive-mirror--headline-and-path-at-point)))
          (let ((headline (car result)))
            (if (eq boundary 'begin)
                (org-element-property :begin headline)
