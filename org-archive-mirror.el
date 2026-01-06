@@ -70,8 +70,7 @@ uses `org-archive-location' to determine the file."
   (org-with-wide-buffer
    (when-let* ((result (org-archive-mirror--headline-and-path-at-point))
                (headline (car result)))
-     (null (org-element-map (org-element-contents headline) 'headline
-             #'identity nil 'first-match)))))
+     (not (org-archive-mirror--headline-has-children-p headline)))))
 
 (defun org-archive-mirror--maybe-insert-newline ()
   (unless (bolp)
@@ -149,19 +148,6 @@ Optional AST is a pre-parsed org-element tree to avoid re-parsing."
   (when-let* ((result (org-archive-mirror--headline-and-path-at-point)))
     (cadr result)))
 
-(defun org-archive-mirror--find-next-headline (text level position)
-  (let ((normalized-title (org-archive-mirror--normalize-heading-title text)))
-    (org-archive-mirror--without-element-cache
-     (org-element-map (org-element-parse-buffer) 'headline
-       (lambda (headline)
-         (let ((begin (org-element-property :begin headline)))
-           (when (and (>= begin position)
-                      (= (org-element-property :level headline) level)
-                      (string= (org-archive-mirror--headline-title headline)
-                               normalized-title))
-             headline)))
-       nil 'first-match))))
-
 (defun org-archive-mirror--headline-and-path-at-point ()
   (let ((pos (point))
         result)
@@ -172,13 +158,6 @@ Optional AST is a pre-parsed org-element tree to avoid re-parsing."
          (when (and (<= begin pos) (< pos end))
            (setq result (list headline path))))))
     result))
-
-(defun org-archive-mirror--goto-heading (text level)
-  "If heading TEXT on level LEVEL exists, move point to its start
-and return a truthy value, return nil otherwise."
-  (when-let* ((headline (org-archive-mirror--find-next-headline text level (point))))
-    (goto-char (org-element-property :begin headline))
-    t))
 
 (defun org-archive-mirror--insert-outline (outline)
   "Make sure org outline OUTLINE exists in current buffer."
@@ -233,8 +212,7 @@ and return a truthy value, return nil otherwise."
      (org-archive-mirror--map-headlines-with-path
       (lambda (headline path)
         (when (equal path normalized)
-          (org-element-map (org-element-contents headline)
-              'headline #'identity nil 'first-match)))
+          (org-archive-mirror--headline-has-children-p headline)))
       ast))))
 
 (defun org-archive-mirror--narrow-to-parent (outline)
@@ -370,66 +348,17 @@ Do nothing if outline is on top level or does not exist."
              (if (org-invisible-p) (org-end-of-subtree nil t))))))
     (org-archive-mirror--archive-subtree)))
 
-;;;###autoload
-(defun org-archive-mirror-toggle ()
-  (interactive)
-
-  (unless buffer-file-name
-    (user-error "Current buffer is not associated with file"))
-  (unless (eq major-mode 'org-mode)
-    (user-error "Can only be invoked from org-mode"))
-
-  (if-let* ((other-file (if (org-archive-mirror--in-archive-p)
-                            (org-archive-mirror--find-archive-source)
-                          (org-archive-mirror--get-archive-file)))
-            (other-file-full-path (expand-file-name other-file))
-            ((file-exists-p other-file-full-path)))
-      (find-file (expand-file-name other-file))
-    (user-error "Failed to find corresponding file")))
-
-(defun org-archive-mirror--headline-properties (headline)
-  (let (properties)
-    (org-element-map (org-element-contents headline) 'node-property
-      (lambda (property)
-        (push (cons (org-element-property :key property)
-                    (org-element-property :value property))
-              properties))
-      nil nil 'headline)
-    (nreverse properties)))
-
 (defun org-archive-mirror--first-headline ()
   (org-archive-mirror--without-element-cache
    (org-element-map (org-element-parse-buffer) 'headline
      #'identity nil 'first-match)))
 
 (defun org-archive-mirror--first-child-headline (headline)
-  (org-archive-mirror--without-element-cache
-   (org-element-map (org-element-contents headline) 'headline
-     #'identity nil 'first-match)))
+  (org-element-map (org-element-contents headline) 'headline
+    #'identity nil 'first-match))
 
-(defun org-archive-mirror--in-archive-p ()
-  (org-with-wide-buffer
-   (org-archive-mirror--without-element-cache
-    (org-element-map (org-element-parse-buffer) 'headline
-      (lambda (headline)
-        (let ((properties (org-archive-mirror--headline-properties headline)))
-          (when (seq-some
-                 (lambda (prop)
-                   (string-prefix-p "ARCHIVE_" (car prop)))
-                 properties)
-            headline)))
-      nil 'first-match))))
-
-(defun org-archive-mirror--find-archive-source ()
-  (org-with-wide-buffer
-   (org-archive-mirror--without-element-cache
-    (org-element-map (org-element-parse-buffer) 'headline
-      (lambda (headline)
-        (let* ((properties (org-archive-mirror--headline-properties headline))
-               (file (cdr (assoc "ARCHIVE_FILE" properties))))
-          (when (and file (file-exists-p file))
-            file)))
-      nil 'first-match))))
+(defun org-archive-mirror--headline-has-children-p (headline)
+  (and (org-archive-mirror--first-child-headline headline) t))
 
 (defun org-archive-mirror--around-empty-line-p (point)
   "Return `t' if POINT is either on, or immediately
