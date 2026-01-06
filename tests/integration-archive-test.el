@@ -1,44 +1,19 @@
 ;;; -*- lexical-binding: t -*-
 
 (require 'org-element)
-(require 'cl-lib)
-
-(defun org-archive-mirror-test--update-outline-stack (stack level title)
-  (let* ((target (max 0 (1- level)))
-         (parent (cl-loop for i from 0 below target
-                          for item in stack
-                          collect item)))
-    (append parent (list title))))
 
 (defun org-archive-mirror-test--find-headline (buffer outline)
   (with-current-buffer buffer
-    (let ((org-element-use-cache nil)
-          (stack nil)
-          result)
-      (org-element-map (org-element-parse-buffer) 'headline
-        (lambda (headline)
-          (let* ((level (org-element-property :level headline))
-                 (title (org-archive-mirror--headline-title headline)))
-            (setq stack (org-archive-mirror-test--update-outline-stack stack level title))
-            (when (equal stack outline)
-              (setq result headline)
-              headline)))
-        nil 'first-match)
-      result)))
+    (org-archive-mirror--find-headline-by-outline outline)))
 
 (defun org-archive-mirror-test--count-headlines (buffer outline)
-  (let ((count 0))
+  (let ((count 0)
+        (normalized (org-archive-mirror--normalize-outline outline)))
     (with-current-buffer buffer
-      (let ((org-element-use-cache nil)
-            (stack nil))
-        (org-element-map (org-element-parse-buffer) 'headline
-          (lambda (headline)
-            (let* ((level (org-element-property :level headline))
-                   (title (org-archive-mirror--headline-title headline)))
-              (setq stack (org-archive-mirror-test--update-outline-stack stack level title))
-              (when (equal stack outline)
-                (setq count (1+ count)))))
-          nil nil)))
+      (org-archive-mirror--for-each-headline-with-path
+       (lambda (_headline path)
+         (when (equal path normalized)
+           (setq count (1+ count))))))
     count))
 
 (defun org-archive-mirror-test--headline-children-titles (headline)
