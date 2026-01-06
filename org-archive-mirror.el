@@ -296,15 +296,27 @@ Do nothing if outline is on top level or does not exist."
             (delete-char 1)))))
     children))
 
+(defun org-archive-mirror--direct-child-outlines (parent-outline)
+  (let ((normalized (org-archive-mirror--normalize-outline parent-outline))
+        (stack nil)
+        (children nil))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let* ((level (org-element-property :level headline))
+                (title (org-archive-mirror--headline-title headline)))
+           (setq stack (org-archive-mirror--update-outline-stack stack level title))
+           (when (and (= (length stack) (1+ (length normalized)))
+                      (equal (butlast stack) normalized))
+             (push (copy-sequence stack) children))))
+       nil nil))
+    (nreverse children)))
+
 (defun org-archive-mirror--deduplicate-children (parent-outline)
-  (let ((parent (org-archive-mirror--heading-location parent-outline)))
-    (org-with-point-at parent
-      (when (org-goto-first-child)
-        (cl-loop for subtree-end = (org-with-point-at parent
-                                     (org-end-of-subtree 'invisible-ok))
-                 while (< (point) subtree-end)
-                 do (org-archive-mirror--deduplicate-heading (org-archive-mirror--get-full-outline-path))
-                 always (org-get-next-sibling))))))
+  (when parent-outline
+    (org-with-wide-buffer
+      (dolist (child-outline (org-archive-mirror--direct-child-outlines parent-outline))
+        (org-archive-mirror--deduplicate-heading child-outline)))))
 
 (defun org-archive-mirror--insert-content-at-heading (point-or-marker content)
   (when content
