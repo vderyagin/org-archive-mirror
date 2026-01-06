@@ -262,14 +262,16 @@ Do nothing if outline is on top level or does not exist."
      (dolist (child-outline (org-archive-mirror--direct-child-outlines parent-outline))
        (org-archive-mirror--deduplicate-heading child-outline)))))
 
-(defun org-archive-mirror--insert-content-at-heading (point-or-marker content)
+(defun org-archive-mirror--insert-content-at-heading (headline content)
   (when content
-    (org-with-point-at point-or-marker
-      (save-restriction
-        (org-narrow-to-subtree)
-        (outline-next-heading)
-        (org-archive-mirror--maybe-insert-newline)
-        (insert content "\n")))))
+    (let* ((first-child (org-archive-mirror--first-child-headline headline))
+           (insert-pos (if first-child
+                           (org-element-property :begin first-child)
+                         (or (org-element-property :contents-end headline)
+                             (org-element-property :end headline)))))
+      (goto-char insert-pos)
+      (org-archive-mirror--maybe-insert-newline)
+      (insert content "\n"))))
 
 (defun org-archive-mirror--deduplicate-heading (outline)
   (save-excursion
@@ -277,10 +279,13 @@ Do nothing if outline is on top level or does not exist."
       (when (and (org-archive-mirror--heading-duplicated-p outline)
                  (org-archive-mirror--outline-has-children-p outline))
         (cl-loop initially (org-archive-mirror--narrow-to-parent outline)
-                 for first-instance = (org-archive-mirror--heading-location outline)
+                 for first-headline = (org-with-wide-buffer
+                                       (org-archive-mirror--find-headline-by-outline outline))
+                 for first-instance = (org-element-property :begin first-headline)
                  for content = (org-archive-mirror--remove-heading-extract-children first-instance)
-                 for second-instance = (org-archive-mirror--heading-location outline)
-                 do (org-archive-mirror--insert-content-at-heading second-instance content)
+                 for second-headline = (org-with-wide-buffer
+                                        (org-archive-mirror--find-headline-by-outline outline))
+                 do (org-archive-mirror--insert-content-at-heading second-headline content)
                  while (org-archive-mirror--heading-duplicated-p outline)
                  finally (org-archive-mirror--deduplicate-children outline))))))
 
