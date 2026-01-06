@@ -35,6 +35,7 @@
 (require 'org-archive)
 (require 'org-element)
 (require 'subr-x)
+(require 'cl-lib)
 
 (defgroup org-archive-mirror nil
   "A tool for archiving org subtrees mirroring original structure"
@@ -52,38 +53,126 @@ uses `org-archive-location' to determine the file."
   :group 'org-archive-mirror
   :type 'function)
 
+(defconst org-archive-mirror--progress-cookie-re
+  (rx "["
+      (or (any "/" "%")
+          (and (+ digit) "%")
+          (and (+ digit) "/" (+ digit)))
+      "]")
+  "Regexp matching Org progress cookies without surrounding whitespace.")
+
+(defmacro org-archive-mirror--without-element-cache (&rest body)
+  `(let ((org-element-use-cache nil))
+     ,@body))
+
 (defun org-archive-mirror--leaf-heading-p ()
-  "True if heading at point does not have any child headings"
-  (unless (zerop (org-outline-level))
-    (org-with-wide-buffer
-     (let ((subtree-end (save-excursion (org-end-of-subtree t))))
-       (outline-next-heading)
-       (>= (point) subtree-end)))))
+  "True if heading at point does not have any child headings."
+  (org-with-wide-buffer
+    (when-let* ((result (org-archive-mirror--find-path-at-point))
+                (headline (car result)))
+      (let ((begin (org-element-property :begin headline))
+            (end (org-element-property :end headline))
+            (level (org-element-property :level headline)))
+        (org-archive-mirror--without-element-cache
+         (null (org-element-map (org-element-parse-buffer) 'headline
+                 (lambda (candidate)
+                   (let ((candidate-begin (org-element-property :begin candidate))
+                         (candidate-level (org-element-property :level candidate)))
+                     (when (and (> candidate-begin begin)
+                                (< candidate-begin end)
+                                (> candidate-level level))
+                       candidate)))
+                 nil 'first-match)))))))
 
 (defun org-archive-mirror--maybe-insert-newline ()
   (unless (save-excursion
             (re-search-backward "\n\\|\\`" (- (point) 1) 'no-error 1))
     (insert "\n")))
 
+(defun org-archive-mirror--strip-progress-cookie (title)
+  (when title
+    (let ((cookie-re (if (boundp 'org-progress-cookie-re)
+                         org-progress-cookie-re
+                       org-archive-mirror--progress-cookie-re)))
+      (replace-regexp-in-string
+       (concat "[ \t]+" cookie-re "\\'")
+       ""
+       title))))
+
+(defun org-archive-mirror--normalize-heading-title (title)
+  (when title
+    (org-archive-mirror--strip-progress-cookie (string-trim title))))
+
+(defun org-archive-mirror--headline-title (headline)
+  (org-archive-mirror--normalize-heading-title
+   (org-element-property :raw-value headline)))
+
+(defun org-archive-mirror--normalize-outline (outline)
+  (mapcar #'org-archive-mirror--normalize-heading-title outline))
+
+(defun org-archive-mirror--update-outline-stack (stack level title)
+  (let* ((target (max 0 (1- level)))
+         (parent (cl-loop for i from 0 below target
+                          for item in stack
+                          collect item)))
+    (append parent (list title))))
+
+(defun org-archive-mirror--find-headline-by-outline (outline)
+  (let ((normalized (org-archive-mirror--normalize-outline outline))
+        (stack nil)
+        result)
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let* ((level (org-element-property :level headline))
+                (title (org-archive-mirror--headline-title headline)))
+           (setq stack (org-archive-mirror--update-outline-stack stack level title))
+           (when (equal stack normalized)
+             (setq result headline)
+             headline)))
+       nil 'first-match))
+    result))
+
 (defun org-archive-mirror--get-full-outline-path ()
-  (let ((progress-indicator-regexp
-         (rx (+ " ")
-             "["
-             (or (any "/" "%")                              ; "[/]" and "[%]" cases
-                 (and (+ (any digit)) "%")                  ; "[x%]" case
-                 (and (+ (any digit)) "/" (+ (any digit)))) ; "[x/y]" case
-             "]" string-end)))
-    (append (org-get-outline-path)
-            (list (replace-regexp-in-string
-                   progress-indicator-regexp ""
-                   (nth 4 (org-heading-components)))))))
+  (when-let ((result (org-archive-mirror--find-path-at-point)))
+    (cadr result)))
+
+(defun org-archive-mirror--find-next-headline (text level position)
+  (let ((normalized-title (org-archive-mirror--normalize-heading-title text)))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let ((begin (org-element-property :begin headline)))
+           (when (and (>= begin position)
+                      (= (org-element-property :level headline) level)
+                      (string= (org-archive-mirror--headline-title headline)
+                               normalized-title))
+             headline)))
+       nil 'first-match))))
+
+(defun org-archive-mirror--find-path-at-point ()
+  (let ((pos (point))
+        (stack nil)
+        result)
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let* ((level (org-element-property :level headline))
+                (title (org-archive-mirror--headline-title headline))
+                (begin (org-element-property :begin headline))
+                (end (org-element-property :end headline)))
+           (setq stack (org-archive-mirror--update-outline-stack stack level title))
+           (when (and (<= begin pos) (< pos end))
+             (setq result (list headline (copy-sequence stack))))))
+       nil nil))
+    result))
 
 (defun org-archive-mirror--goto-heading (text level)
-  "If heading TEXT on level LEVEL exists, move point just past it
-and return a truthy value, move to (point-max) and return nil otherwise"
-  (cl-loop with re = (format org-complex-heading-regexp-format text)
-           while (re-search-forward re nil 'noerror)
-           thereis (= (length (match-string 1)) level)))
+  "If heading TEXT on level LEVEL exists, move point to its start
+and return a truthy value, return nil otherwise."
+  (when-let ((headline (org-archive-mirror--find-next-headline text level (point))))
+    (goto-char (org-element-property :begin headline))
+    t))
 
 (defun org-archive-mirror--insert-outline (outline)
   "Make sure org outline OUTLINE exists in current buffer"
@@ -103,30 +192,58 @@ and return a truthy value, move to (point-max) and return nil otherwise"
             (org-narrow-to-subtree))))
 
 (defun org-archive-mirror--heading-location (outline)
-  (org-with-wide-buffer
-   (when outline
-     (cl-loop initially (goto-char (point-min))
-              for level from 1 to (length outline)
-              for item in outline
-              always (org-archive-mirror--goto-heading item level)
-              do
-              (org-back-to-heading 'invisible-ok)
-              (org-narrow-to-subtree)
-              finally return (point)))))
+  (when outline
+    (org-with-wide-buffer
+      (org-archive-mirror--without-element-cache
+       (when-let ((headline (org-archive-mirror--find-headline-by-outline outline)))
+         (org-element-property :begin headline))))))
 
 (defun org-archive-mirror--heading-duplicated-p (outline)
-  (org-with-wide-buffer
-   (cl-loop initially (if-let (parent (org-archive-mirror--heading-location (butlast outline)))
-                          (progn
-                            (goto-char parent)
-                            (org-narrow-to-subtree))
-                        (goto-char (point-min)))
-            with level = (length outline)
-            with heading = (car (last outline))
-            until (eobp)
-            count (org-archive-mirror--goto-heading heading level)
-            into heading-occurrences
-            if (>= heading-occurrences 2) return t)))
+  (when outline
+    (let ((normalized (org-archive-mirror--normalize-outline outline))
+          (stack nil)
+          (occurrences 0))
+      (org-with-wide-buffer
+        (org-archive-mirror--without-element-cache
+         (org-element-map (org-element-parse-buffer) 'headline
+           (lambda (headline)
+             (let* ((level (org-element-property :level headline))
+                    (title (org-archive-mirror--headline-title headline)))
+               (setq stack (org-archive-mirror--update-outline-stack stack level title))
+               (when (equal stack normalized)
+                 (setq occurrences (1+ occurrences))
+                 (when (> occurrences 1)
+                   headline))))
+           nil 'first-match)
+         (> occurrences 1))))))
+
+(defun org-archive-mirror--outline-has-children-p (outline)
+  (let ((normalized (org-archive-mirror--normalize-outline outline))
+        (stack nil)
+        (has-children nil))
+    (org-with-wide-buffer
+      (org-archive-mirror--without-element-cache
+       (org-element-map (org-element-parse-buffer) 'headline
+         (lambda (headline)
+           (let* ((level (org-element-property :level headline))
+                  (title (org-archive-mirror--headline-title headline))
+                  (begin (org-element-property :begin headline))
+                  (end (org-element-property :end headline)))
+             (setq stack (org-archive-mirror--update-outline-stack stack level title))
+             (when (equal stack normalized)
+               (when (org-element-map (org-element-parse-buffer) 'headline
+                       (lambda (candidate)
+                         (let ((candidate-begin (org-element-property :begin candidate))
+                               (candidate-level (org-element-property :level candidate)))
+                           (when (and (> candidate-begin begin)
+                                      (< candidate-begin end)
+                                      (> candidate-level level))
+                             candidate)))
+                       nil 'first-match)
+                 (setq has-children t)
+                 headline))))
+         nil 'first-match)))
+    has-children))
 
 (defun org-archive-mirror--narrow-to-parent (outline)
   "If heading corresponding to OUTLINE has parent, narrow to it's subtree.
@@ -137,16 +254,36 @@ Do nothing if outline is on top level or does not exist."
     (org-narrow-to-subtree)))
 
 (defun org-archive-mirror--remove-heading-extract-children (point-or-marker)
-  (prog1 (org-with-point-at point-or-marker
-           (let ((subtree-end (save-excursion (org-end-of-subtree 'invisible-ok))))
-             (outline-next-heading)
-             (when (< (point) subtree-end)
-               (string-trim (delete-and-extract-region (point) subtree-end)))))
-
+  (let (children)
     (org-with-point-at point-or-marker
-      (delete-region (point) (save-excursion (org-end-of-subtree 'invisible-ok)))
-      (while (looking-at-p "\n")
-        (delete-char 1)))))
+      (when-let* ((result (org-archive-mirror--find-path-at-point))
+                  (headline (car result)))
+        (let* ((headline-begin (org-element-property :begin headline))
+               (headline-end (org-element-property :end headline))
+               (headline-level (org-element-property :level headline))
+               (first-child
+                (org-archive-mirror--without-element-cache
+                 (org-element-map (org-element-parse-buffer) 'headline
+                   (lambda (candidate)
+                     (let ((candidate-begin (org-element-property :begin candidate))
+                           (candidate-level (org-element-property :level candidate)))
+                       (when (and (> candidate-begin headline-begin)
+                                  (< candidate-begin headline-end)
+                                  (> candidate-level headline-level))
+                         candidate)))
+                   nil 'first-match)))
+               (children-begin (when first-child
+                                 (org-element-property :begin first-child))))
+          (when children-begin
+            (setq children
+                  (string-trim
+                   (buffer-substring-no-properties children-begin headline-end)))
+            (delete-region children-begin headline-end))
+          (delete-region headline-begin (or children-begin headline-end))
+          (goto-char headline-begin)
+          (while (looking-at-p "\n")
+            (delete-char 1)))))
+    children))
 
 (defun org-archive-mirror--deduplicate-children (parent-outline)
   (let ((parent (org-archive-mirror--heading-location parent-outline)))
@@ -170,9 +307,8 @@ Do nothing if outline is on top level or does not exist."
 (defun org-archive-mirror--deduplicate-heading (outline)
   (save-excursion
     (save-restriction
-      (when (and (org-with-point-at (org-archive-mirror--heading-location outline)
-                   (not (org-archive-mirror--leaf-heading-p)))
-                 (org-archive-mirror--heading-duplicated-p outline))
+      (when (and (org-archive-mirror--heading-duplicated-p outline)
+                 (org-archive-mirror--outline-has-children-p outline))
         (cl-loop initially (org-archive-mirror--narrow-to-parent outline)
                  for first-instance = (org-archive-mirror--heading-location outline)
                  for content = (org-archive-mirror--remove-heading-extract-children first-instance)
@@ -230,12 +366,19 @@ Do nothing if outline is on top level or does not exist."
       (let ((scope (if (eq org-loop-over-headlines-in-active-region 'start-level)
                        'region-start-level 'region))
             org-loop-over-headlines-in-active-region)
-        (org-map-entries
-         '(progn (setq org-map-continue-from (progn (org-back-to-heading) (point)))
-                 (org-archive-mirror--archive-subtree))
-         org-loop-over-headlines-in-active-region
-         scope
-         (if (org-invisible-p) (org-end-of-subtree nil t))))
+        (save-mark-and-excursion
+          (let* ((bounds (org-archive-mirror--normalized-region-bounds))
+                 (beg (car bounds))
+                 (end (cdr bounds)))
+            (goto-char beg)
+            (set-mark end)
+            (activate-mark)
+            (org-map-entries
+             '(progn (setq org-map-continue-from (progn (org-back-to-heading) (point)))
+                     (org-archive-mirror--archive-subtree))
+             org-loop-over-headlines-in-active-region
+             scope
+             (if (org-invisible-p) (org-end-of-subtree nil t))))))
     (org-archive-mirror--archive-subtree)))
 
 ;;;###autoload
@@ -287,10 +430,26 @@ preceding/following an empty line, `nil' otherwise."
 
 (defun org-archive-mirror--includes-headings-p (beg end)
   (org-with-wide-buffer
-   (narrow-to-region beg end)
-   (goto-char (point-min))
-   (or (org-at-heading-p)
-       (outline-next-heading))))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-region beg end) 'headline
+       #'identity nil 'first-match))))
+
+(defun org-archive-mirror--headline-boundary (position boundary)
+  (org-with-point-at position
+    (org-archive-mirror--without-element-cache
+     (if-let ((result (org-archive-mirror--find-path-at-point)))
+         (let ((headline (car result)))
+           (if (eq boundary 'begin)
+               (org-element-property :begin headline)
+             (org-element-property :end headline)))
+       position))))
+
+(defun org-archive-mirror--normalized-region-bounds ()
+  (let* ((beg (region-beginning))
+         (end (region-end))
+         (normalized-beg (org-archive-mirror--headline-boundary beg 'begin))
+         (normalized-end (org-archive-mirror--headline-boundary end 'end)))
+    (cons normalized-beg (max normalized-beg normalized-end))))
 
 (defun org-archive-mirror-plain ()
   (interactive)
