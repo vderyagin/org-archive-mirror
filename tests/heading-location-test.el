@@ -35,6 +35,15 @@
                 (org-back-to-heading)
                 (point)))))
 
+  (it "ignores progress indicators in headings"
+    (with-org "* foo [1/3]\n** bar [0/2]"
+      (expect (org-archive-mirror--heading-location '("foo" "bar"))
+              :to-be
+              (save-excursion
+                (search-forward "bar")
+                (org-back-to-heading)
+                (point)))))
+
   (it "is not confused by heading of same name in different branches"
     (with-org "* foo\** baz :wrong:\n* bar\n** baz :correct:"
       (expect (org-archive-mirror--heading-location '("bar" "baz"))

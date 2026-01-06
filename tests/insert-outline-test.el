@@ -25,6 +25,12 @@
         (org-archive-mirror--insert-outline '("foo" "bar" "baz"))
         (expect (buffer-string) :to-equal text))))
 
+  (it "ignores progress indicators when reusing headings"
+    (let ((text "* foo [1/3]\n** bar [0/2]\n*** baz [2/2]"))
+      (with-org text
+        (org-archive-mirror--insert-outline '("foo" "bar" "baz"))
+        (expect (buffer-string) :to-equal text))))
+
   (it "reuses existing partial outline"
     (with-org "* foo\n** bar"
       (org-archive-mirror--insert-outline '("foo" "bar" "baz"))

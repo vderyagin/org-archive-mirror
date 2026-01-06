@@ -13,6 +13,10 @@
     (with-org "* foo\n* foo"
       (expect (org-archive-mirror--heading-duplicated-p '("foo")) :to-be-truthy)))
 
+  (it "treats progress indicators as part of the same heading"
+    (with-org "* foo [0/2]\n* foo [2/2]"
+      (expect (org-archive-mirror--heading-duplicated-p '("foo")) :to-be-truthy)))
+
   (it "returns nil when asked for nonexistent heading"
     (with-org ""
       (expect (org-archive-mirror--heading-duplicated-p '("bar" "baz")) :to-be nil)))
