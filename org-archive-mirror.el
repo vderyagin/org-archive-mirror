@@ -103,43 +103,48 @@ uses `org-archive-location' to determine the file."
                           collect item)))
     (append parent (list title))))
 
-(defun org-archive-mirror--map-headlines-with-path (fn)
+(defun org-archive-mirror--map-headlines-with-path (fn &optional ast)
   "Call FN with (HEADLINE PATH) for each headline in current buffer.
 PATH is the normalized outline path to HEADLINE (list of titles).
 If FN returns non-nil, stop traversal and return that value.
-Traversal visits all headlines when FN always returns nil."
+Traversal visits all headlines when FN always returns nil.
+Optional AST is a pre-parsed org-element tree to avoid re-parsing."
   (let ((stack nil)
+        (tree (or ast (org-archive-mirror--without-element-cache
+                       (org-element-parse-buffer))))
         result)
-    (org-archive-mirror--without-element-cache
-     (org-element-map (org-element-parse-buffer) 'headline
-       (lambda (headline)
-         (let* ((level (org-element-property :level headline))
-                (title (org-archive-mirror--headline-title headline)))
-           (setq stack (org-archive-mirror--update-outline-stack stack level title))
-           (setq result (funcall fn headline stack))
-           (when result result)))
-       nil 'first-match))
+    (org-element-map tree 'headline
+      (lambda (headline)
+        (let* ((level (org-element-property :level headline))
+               (title (org-archive-mirror--headline-title headline)))
+          (setq stack (org-archive-mirror--update-outline-stack stack level title))
+          (setq result (funcall fn headline stack))
+          (when result result)))
+      nil 'first-match)
     result))
 
-(defun org-archive-mirror--for-each-headline-with-path (fn)
+(defun org-archive-mirror--for-each-headline-with-path (fn &optional ast)
   "Call FN with (HEADLINE PATH) for each headline in current buffer.
 PATH is the normalized outline path to HEADLINE (list of titles).
-Always visits all headlines. Return value is undefined."
-  (let ((stack nil))
-    (org-archive-mirror--without-element-cache
-     (org-element-map (org-element-parse-buffer) 'headline
-       (lambda (headline)
-         (let* ((level (org-element-property :level headline))
-                (title (org-archive-mirror--headline-title headline)))
-           (setq stack (org-archive-mirror--update-outline-stack stack level title))
-           (funcall fn headline stack)))
-       nil nil))))
+Always visits all headlines. Return value is undefined.
+Optional AST is a pre-parsed org-element tree to avoid re-parsing."
+  (let ((stack nil)
+        (tree (or ast (org-archive-mirror--without-element-cache
+                       (org-element-parse-buffer)))))
+    (org-element-map tree 'headline
+      (lambda (headline)
+        (let* ((level (org-element-property :level headline))
+               (title (org-archive-mirror--headline-title headline)))
+          (setq stack (org-archive-mirror--update-outline-stack stack level title))
+          (funcall fn headline stack)))
+      nil nil)))
 
-(defun org-archive-mirror--find-headline-by-outline (outline)
+(defun org-archive-mirror--find-headline-by-outline (outline &optional ast)
   (let ((normalized (org-archive-mirror--normalize-outline outline)))
     (org-archive-mirror--map-headlines-with-path
      (lambda (headline path)
-       (when (equal path normalized) headline)))))
+       (when (equal path normalized) headline))
+     ast)))
 
 (defun org-archive-mirror--get-full-outline-path ()
   (when-let* ((result (org-archive-mirror--headline-and-path-at-point)))
@@ -204,14 +209,13 @@ and return a truthy value, return nil otherwise."
                 (delete-char -1))))))
 
 
-(defun org-archive-mirror--heading-location (outline)
+(defun org-archive-mirror--heading-location (outline &optional ast)
   (when outline
     (org-with-wide-buffer
-     (org-archive-mirror--without-element-cache
-      (when-let* ((headline (org-archive-mirror--find-headline-by-outline outline)))
-        (org-element-property :begin headline))))))
+     (when-let* ((headline (org-archive-mirror--find-headline-by-outline outline ast)))
+       (org-element-property :begin headline)))))
 
-(defun org-archive-mirror--heading-duplicated-p (outline)
+(defun org-archive-mirror--heading-duplicated-p (outline &optional ast)
   (when outline
     (let ((normalized (org-archive-mirror--normalize-outline outline))
           (occurrences 0))
@@ -220,17 +224,19 @@ and return a truthy value, return nil otherwise."
         (lambda (_headline path)
           (when (equal path normalized)
             (setq occurrences (1+ occurrences))
-            (when (> occurrences 1) t))))
+            (when (> occurrences 1) t)))
+        ast)
        (> occurrences 1)))))
 
-(defun org-archive-mirror--outline-has-children-p (outline)
+(defun org-archive-mirror--outline-has-children-p (outline &optional ast)
   (let ((normalized (org-archive-mirror--normalize-outline outline)))
     (org-with-wide-buffer
      (org-archive-mirror--map-headlines-with-path
       (lambda (headline path)
         (when (equal path normalized)
           (org-element-map (org-element-contents headline)
-              'headline #'identity nil 'first-match)))))))
+              'headline #'identity nil 'first-match)))
+      ast))))
 
 (defun org-archive-mirror--narrow-to-parent (outline)
   "If heading corresponding to OUTLINE has parent, narrow to it's subtree.
@@ -262,14 +268,15 @@ Do nothing if outline is on top level or does not exist."
             (delete-char 1)))))
     children))
 
-(defun org-archive-mirror--direct-child-outlines (parent-outline)
+(defun org-archive-mirror--direct-child-outlines (parent-outline &optional ast)
   (let ((normalized (org-archive-mirror--normalize-outline parent-outline))
         (children nil))
     (org-archive-mirror--for-each-headline-with-path
      (lambda (_headline path)
        (when (and (= (length path) (1+ (length normalized)))
                   (equal (butlast path) normalized))
-         (push path children))))
+         (push path children)))
+     ast)
     (nreverse children)))
 
 (defun org-archive-mirror--deduplicate-children (parent-outline)
