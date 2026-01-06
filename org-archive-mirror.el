@@ -379,13 +379,12 @@ Do nothing if outline is on top level or does not exist."
 
 (defun org-archive-mirror--headline-boundary (position boundary)
   (org-with-point-at position
-    (org-archive-mirror--without-element-cache
-     (if-let* ((result (org-archive-mirror--headline-and-path-at-point)))
-         (let ((headline (car result)))
-           (if (eq boundary 'begin)
-               (org-element-property :begin headline)
-             (org-element-property :end headline)))
-       position))))
+    (if-let* ((result (org-archive-mirror--headline-and-path-at-point)))
+        (let ((headline (car result)))
+          (if (eq boundary 'begin)
+              (org-element-property :begin headline)
+            (org-element-property :end headline)))
+      position)))
 
 (defun org-archive-mirror--normalized-region-bounds ()
   (let* ((beg (region-beginning))
