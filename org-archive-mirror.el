@@ -361,14 +361,13 @@ Do nothing if outline is on top level or does not exist."
   (and (org-archive-mirror--first-child-headline headline) t))
 
 (defun org-archive-mirror--around-empty-line-p (point)
-  "Return `t' if POINT is either on, or immediately
-preceding/following an empty line, `nil' otherwise."
+  "Return t if POINT is on or adjacent to an empty line."
   (org-with-wide-buffer
    (goto-char point)
-   (or (and (looking-at-p "\n")
-            (re-search-backward "\n" (- (point) 1) 'no-error 1))
+   (or (and (bolp) (eolp))
        (looking-at-p "\n\n")
-       (re-search-backward "\n\n" (- (point) 2) 'no-error 1))))
+       (and (>= (point) 2)
+            (equal (buffer-substring-no-properties (- (point) 2) (point)) "\n\n")))))
 
 (defun org-archive-mirror--includes-headings-p (beg end)
   (org-with-wide-buffer
