@@ -224,23 +224,13 @@ and return a truthy value, return nil otherwise."
        (> occurrences 1)))))
 
 (defun org-archive-mirror--outline-has-children-p (outline)
-  (let ((normalized (org-archive-mirror--normalize-outline outline))
-        (stack nil))
+  (let ((normalized (org-archive-mirror--normalize-outline outline)))
     (org-with-wide-buffer
-     (let ((ast (org-archive-mirror--without-element-cache
-                 (org-element-parse-buffer))))
-       (catch 'has-children
-         (org-element-map ast 'headline
-           (lambda (headline)
-             (let* ((level (org-element-property :level headline))
-                    (title (org-archive-mirror--headline-title headline)))
-               (setq stack (org-archive-mirror--update-outline-stack stack level title))
-               (when (equal stack normalized)
-                 (when (org-element-map (org-element-contents headline)
-                           'headline #'identity nil 'first-match)
-                   (throw 'has-children t)))))
-           nil 'first-match)
-         nil)))))
+     (org-archive-mirror--map-headlines-with-path
+      (lambda (headline path)
+        (when (equal path normalized)
+          (org-element-map (org-element-contents headline)
+              'headline #'identity nil 'first-match)))))))
 
 (defun org-archive-mirror--narrow-to-parent (outline)
   "If heading corresponding to OUTLINE has parent, narrow to it's subtree.
@@ -274,18 +264,12 @@ Do nothing if outline is on top level or does not exist."
 
 (defun org-archive-mirror--direct-child-outlines (parent-outline)
   (let ((normalized (org-archive-mirror--normalize-outline parent-outline))
-        (stack nil)
         (children nil))
-    (org-archive-mirror--without-element-cache
-     (org-element-map (org-element-parse-buffer) 'headline
-       (lambda (headline)
-         (let* ((level (org-element-property :level headline))
-                (title (org-archive-mirror--headline-title headline)))
-           (setq stack (org-archive-mirror--update-outline-stack stack level title))
-           (when (and (= (length stack) (1+ (length normalized)))
-                      (equal (butlast stack) normalized))
-             (push (copy-sequence stack) children))))
-       nil nil))
+    (org-archive-mirror--for-each-headline-with-path
+     (lambda (_headline path)
+       (when (and (= (length path) (1+ (length normalized)))
+                  (equal (butlast path) normalized))
+         (push path children))))
     (nreverse children)))
 
 (defun org-archive-mirror--deduplicate-children (parent-outline)
