@@ -91,13 +91,10 @@ uses `org-archive-location' to determine the file."
 
 (defun org-archive-mirror--strip-progress-cookie (title)
   (when title
-    (let ((cookie-re (if (boundp 'org-progress-cookie-re)
-                         org-progress-cookie-re
-                       org-archive-mirror--progress-cookie-re)))
-      (replace-regexp-in-string
-       (concat "[ \t]+" cookie-re "\\'")
-       ""
-       title))))
+    (replace-regexp-in-string
+     (concat "[ \t]+" org-archive-mirror--progress-cookie-re "\\'")
+     ""
+     title)))
 
 (defun org-archive-mirror--normalize-heading-title (title)
   (when title
