@@ -134,7 +134,7 @@ uses `org-archive-location' to determine the file."
     result))
 
 (defun org-archive-mirror--get-full-outline-path ()
-  (when-let ((result (org-archive-mirror--find-path-at-point)))
+  (when-let* ((result (org-archive-mirror--find-path-at-point)))
     (cadr result)))
 
 (defun org-archive-mirror--find-next-headline (text level position)
@@ -170,32 +170,43 @@ uses `org-archive-location' to determine the file."
 (defun org-archive-mirror--goto-heading (text level)
   "If heading TEXT on level LEVEL exists, move point to its start
 and return a truthy value, return nil otherwise."
-  (when-let ((headline (org-archive-mirror--find-next-headline text level (point))))
+  (when-let* ((headline (org-archive-mirror--find-next-headline text level (point))))
     (goto-char (org-element-property :begin headline))
     t))
 
 (defun org-archive-mirror--insert-outline (outline)
-  "Make sure org outline OUTLINE exists in current buffer"
+  "Make sure org outline OUTLINE exists in current buffer."
   (org-with-wide-buffer
-   (cl-loop initially (goto-char (point-min))
-            for level from 1 to (length outline)
-            for item in outline
-            for full-heading = (format "%s %s" (make-string level ?*) item)
-            unless (org-archive-mirror--goto-heading item level)
-            do
-            (goto-char (point-max))
-            (org-archive-mirror--maybe-insert-newline)
-            (insert full-heading)
-            end
-            do
-            (org-back-to-heading 'invisible-ok)
-            (org-narrow-to-subtree))))
+    (cl-loop for level from 1 to (length outline)
+             for item in outline
+             for prefix = (seq-take outline level)
+             for parent-outline = (butlast prefix)
+             for full-heading = (format "%s %s" (make-string level ?*) item)
+             unless (org-archive-mirror--find-headline-by-outline prefix)
+             do
+             (let* ((parent-headline (and parent-outline
+                                          (org-archive-mirror--find-headline-by-outline parent-outline)))
+                    (insert-position (if parent-headline
+                                         (org-element-property :end parent-headline)
+                                       (point-max)))
+                    (at-eobp (= insert-position (point-max)))
+                    (had-trailing-newline (and at-eobp
+                                               (> (point-max) (point-min))
+                                               (eq (char-before) ?\n))))
+               (goto-char insert-position)
+               (org-archive-mirror--maybe-insert-newline)
+               (insert full-heading)
+               (unless (looking-at-p "\n\|\'")
+                 (insert "\n"))
+               (when (and at-eobp (not had-trailing-newline) (eq (char-before) ?\n))
+                 (delete-char -1))))))
+
 
 (defun org-archive-mirror--heading-location (outline)
   (when outline
     (org-with-wide-buffer
       (org-archive-mirror--without-element-cache
-       (when-let ((headline (org-archive-mirror--find-headline-by-outline outline)))
+       (when-let* ((headline (org-archive-mirror--find-headline-by-outline outline)))
          (org-element-property :begin headline))))))
 
 (defun org-archive-mirror--heading-duplicated-p (outline)
@@ -248,7 +259,7 @@ and return a truthy value, return nil otherwise."
 (defun org-archive-mirror--narrow-to-parent (outline)
   "If heading corresponding to OUTLINE has parent, narrow to it's subtree.
 Do nothing if outline is on top level or does not exist."
-  (when-let ((parent-outline (butlast outline))
+  (when-let* ((parent-outline (butlast outline))
              (parent-location (org-archive-mirror--heading-location parent-outline)))
     (goto-char parent-location)
     (org-narrow-to-subtree)))
@@ -318,7 +329,7 @@ Do nothing if outline is on top level or does not exist."
                  finally (org-archive-mirror--deduplicate-children outline))))))
 
 (defun org-archive-mirror--get-archive-file ()
-  (when-let (file (funcall org-archive-mirror-archive-file-function))
+  (when-let* ((file (funcall org-archive-mirror-archive-file-function)))
     (when (string= file (buffer-file-name))
       (user-error "org-archive-mirror: archive file can't match the original file"))
     file))
@@ -345,7 +356,7 @@ Do nothing if outline is on top level or does not exist."
       ;; if entry to be archived has a parent, narrow archive buffer
       ;; correspondingly, so that archived entry does not end up in wrong
       ;; place
-      (when-let (parent-heading (org-archive-mirror--heading-location parent-outline-path))
+      (when-let* ((parent-heading (org-archive-mirror--heading-location parent-outline-path)))
         (goto-char parent-heading)
         (org-narrow-to-subtree)))
 
@@ -398,25 +409,39 @@ Do nothing if outline is on top level or does not exist."
       (find-file (expand-file-name other-file))
     (user-error "Failed to find corresponding file")))
 
+(defun org-archive-mirror--headline-properties (headline)
+  (let (properties)
+    (org-element-map (org-element-contents headline) 'node-property
+      (lambda (property)
+        (push (cons (org-element-property :key property)
+                    (org-element-property :value property))
+              properties))
+      nil nil 'headline)
+    (nreverse properties)))
+
 (defun org-archive-mirror--in-archive-p ()
   (org-with-wide-buffer
-   (cl-loop initially (goto-char (point-min))
-            until (eobp)
-            thereis (and (org-at-heading-p)
-                         (seq-some
-                          (apply-partially #'string-prefix-p "ARCHIVE_")
-                          (seq-map #'car (org-entry-properties))))
-            do (outline-next-heading))))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let ((properties (org-archive-mirror--headline-properties headline)))
+           (when (seq-some
+                  (lambda (prop)
+                    (string-prefix-p "ARCHIVE_" (car prop)))
+                  properties)
+             headline)))
+       nil 'first-match))))
 
 (defun org-archive-mirror--find-archive-source ()
   (org-with-wide-buffer
-   (cl-loop initially (goto-char (point-min))
-            until (eobp)
-            thereis (when-let* (((org-at-heading-p))
-                                (file (org-entry-get (point) "ARCHIVE_FILE"))
-                                ((file-exists-p file)))
-                      file)
-            do (outline-next-heading))))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let* ((properties (org-archive-mirror--headline-properties headline))
+                (file (cdr (assoc "ARCHIVE_FILE" properties))))
+           (when (and file (file-exists-p file))
+             file)))
+       nil 'first-match))))
 
 (defun org-archive-mirror--around-empty-line-p (point)
   "Return `t' if POINT is either on, or immediately
@@ -437,7 +462,7 @@ preceding/following an empty line, `nil' otherwise."
 (defun org-archive-mirror--headline-boundary (position boundary)
   (org-with-point-at position
     (org-archive-mirror--without-element-cache
-     (if-let ((result (org-archive-mirror--find-path-at-point)))
+     (if-let* ((result (org-archive-mirror--find-path-at-point)))
          (let ((headline (car result)))
            (if (eq boundary 'begin)
                (org-element-property :begin headline)

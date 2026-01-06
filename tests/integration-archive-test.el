@@ -1,10 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
-(require 'org-archive-mirror)
 (require 'org-element)
 (require 'cl-lib)
-
-(load "tests/test-helper.el" nil t)
 
 (defun org-archive-mirror-test--update-outline-stack (stack level title)
   (let* ((target (max 0 (1- level)))

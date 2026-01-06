@@ -43,6 +43,14 @@
         (org-archive-mirror--insert-outline '("foo" "quux" "plugh"))
         (expect (buffer-string) :to-equal text))))
 
+  (it "inserts under the correct branch with duplicate names"
+    (let ((text "* foo\n** bar\n* baz\n** bar"))
+      (with-org-allow-point-move text
+        (org-archive-mirror--insert-outline '("baz" "bar" "quux"))
+        (expect (buffer-string)
+                :to-equal
+                "* foo\n** bar\n* baz\n** bar\n*** quux"))))
+
   (it "does not produce any extra newlines when inserting heading"
     (with-org-allow-point-move "* foo\n* quux"
       (org-archive-mirror--insert-outline '("foo" "bar"))
