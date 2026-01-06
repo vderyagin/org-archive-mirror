@@ -103,9 +103,12 @@ uses `org-archive-location' to determine the file."
                           collect item)))
     (append parent (list title))))
 
-(defun org-archive-mirror--find-headline-by-outline (outline)
-  (let ((normalized (org-archive-mirror--normalize-outline outline))
-        (stack nil)
+(defun org-archive-mirror--map-headlines-with-path (fn)
+  "Call FN with (HEADLINE PATH) for each headline in current buffer.
+PATH is the normalized outline path to HEADLINE (list of titles).
+If FN returns non-nil, stop traversal and return that value.
+Traversal visits all headlines when FN always returns nil."
+  (let ((stack nil)
         result)
     (org-archive-mirror--without-element-cache
      (org-element-map (org-element-parse-buffer) 'headline
@@ -113,11 +116,30 @@ uses `org-archive-location' to determine the file."
          (let* ((level (org-element-property :level headline))
                 (title (org-archive-mirror--headline-title headline)))
            (setq stack (org-archive-mirror--update-outline-stack stack level title))
-           (when (equal stack normalized)
-             (setq result headline)
-             headline)))
+           (setq result (funcall fn headline stack))
+           (when result result)))
        nil 'first-match))
     result))
+
+(defun org-archive-mirror--for-each-headline-with-path (fn)
+  "Call FN with (HEADLINE PATH) for each headline in current buffer.
+PATH is the normalized outline path to HEADLINE (list of titles).
+Always visits all headlines. Return value is undefined."
+  (let ((stack nil))
+    (org-archive-mirror--without-element-cache
+     (org-element-map (org-element-parse-buffer) 'headline
+       (lambda (headline)
+         (let* ((level (org-element-property :level headline))
+                (title (org-archive-mirror--headline-title headline)))
+           (setq stack (org-archive-mirror--update-outline-stack stack level title))
+           (funcall fn headline stack)))
+       nil nil))))
+
+(defun org-archive-mirror--find-headline-by-outline (outline)
+  (let ((normalized (org-archive-mirror--normalize-outline outline)))
+    (org-archive-mirror--map-headlines-with-path
+     (lambda (headline path)
+       (when (equal path normalized) headline)))))
 
 (defun org-archive-mirror--get-full-outline-path ()
   (when-let* ((result (org-archive-mirror--find-path-at-point)))
