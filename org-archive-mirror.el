@@ -1,6 +1,6 @@
 ;;; org-archive-mirror.el --- A tool for archiving org subtrees mirroring original structure -*- lexical-binding: t -*-
 
-;; Copyright (C) 2016-2021 Victor Deryagin
+;; Copyright (C) 2016-2026 Victor Deryagin
 
 ;; Author: Victor Deryagin <vderyagin@gmail.com>
 ;; Maintainer: Victor Deryagin <vderyagin@gmail.com>
