@@ -396,7 +396,14 @@ Do nothing if outline is on top level or does not exist."
          (end (region-end))
          (normalized-beg (org-archive-mirror--headline-boundary beg 'begin))
          (normalized-end (org-archive-mirror--headline-boundary end 'end)))
-    (cons normalized-beg (max normalized-beg normalized-end))))
+     (cons normalized-beg (max normalized-beg normalized-end))))
+
+(defun org-archive-mirror--format-plain-archive (content)
+  "Format CONTENT as an archived plain text block with timestamp.
+Returns a string with the content wrapped in an :ARCHIVED: drawer
+containing an inactive timestamp."
+  (let ((timestamp (format-time-string "[%Y-%m-%d %a %H:%M]")))
+    (format ":ARCHIVED:\n%s\n\n%s\n:END:" timestamp content)))
 
 (defun org-archive-mirror-plain ()
   (interactive)
@@ -414,6 +421,7 @@ Do nothing if outline is on top level or does not exist."
   (let* ((outline-path (unless (zerop (org-outline-level))
                          (org-archive-mirror--get-full-outline-path)))
          (archived-content (delete-and-extract-region (region-beginning) (region-end)))
+         (formatted-content (org-archive-mirror--format-plain-archive (string-trim archived-content)))
          (archive-file (org-archive-mirror--get-archive-file))
          (archive-buffer (or (find-buffer-visiting archive-file)
                              (find-file-noselect archive-file))))
@@ -433,7 +441,7 @@ Do nothing if outline is on top level or does not exist."
                   (point-max)))))
          (goto-char insert-position)
          (org-archive-mirror--maybe-insert-newline)
-         (insert (string-trim archived-content) "\n"))))))
+         (insert formatted-content "\n"))))))
 
 (provide 'org-archive-mirror)
 
