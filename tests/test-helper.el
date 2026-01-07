@@ -9,16 +9,16 @@
   "Non-nil allows tests to move point inside `with-org'.")
 
 (defun org-archive-mirror-test--trim-blank-edges (lines)
-  (while (and lines (string-empty-p (car lines)))
+  (while (and lines (string-blank-p (car lines)))
     (setq lines (cdr lines)))
-  (while (and lines (string-empty-p (car (last lines))))
+  (while (and lines (string-blank-p (car (last lines))))
     (setq lines (butlast lines)))
   lines)
 
 (defun org-archive-mirror-test--common-indent (lines)
   (let ((indent most-positive-fixnum))
     (dolist (line lines)
-      (unless (string-empty-p line)
+      (unless (string-blank-p line)
         (string-match "\\`[ \t]*" line)
         (setq indent (min indent (- (match-end 0) (match-beginning 0))))))
     (if (eq indent most-positive-fixnum) 0 indent)))
@@ -31,7 +31,7 @@ is stripped so multi-line strings can be indented naturally."
          (indent (org-archive-mirror-test--common-indent lines)))
     (mapconcat
      (lambda (line)
-       (if (string-empty-p line)
+       (if (string-blank-p line)
            ""
          (substring line indent)))
      lines
