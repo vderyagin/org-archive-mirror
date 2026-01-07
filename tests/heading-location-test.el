@@ -18,7 +18,11 @@
       (expect (org-archive-mirror--heading-location '("corge")) :to-be 1)))
 
   (it "finds a deeply nested heading"
-    (with-org-allow-point-move "* foo\n** bar\n*** baz\n**** quux"
+    (with-org-allow-point-move "
+                                 * foo
+                                 ** bar
+                                 *** baz
+                                 **** quux"
       (expect (org-archive-mirror--heading-location '("foo" "bar" "baz" "quux"))
               :to-be
               (save-excursion
@@ -27,7 +31,9 @@
                 (point)))))
 
   (it "handles tags and todo keywords well"
-    (with-org-allow-point-move "* TODO foo :tag:\n** DONE bar :tag:"
+    (with-org-allow-point-move "
+                                 * TODO foo :tag:
+                                 ** DONE bar :tag:"
       (expect (org-archive-mirror--heading-location '("foo" "bar"))
               :to-be
               (save-excursion
@@ -36,7 +42,9 @@
                 (point)))))
 
   (it "ignores progress indicators in headings"
-    (with-org-allow-point-move "* foo [1/3]\n** bar [0/2]"
+    (with-org-allow-point-move "
+                                 * foo [1/3]
+                                 ** bar [0/2]"
       (expect (org-archive-mirror--heading-location '("foo" "bar"))
               :to-be
               (save-excursion
@@ -45,7 +53,11 @@
                 (point)))))
 
   (it "is not confused by heading of same name in different branches"
-    (with-org-allow-point-move "* foo\** baz :wrong:\n* bar\n** baz :correct:"
+    (with-org-allow-point-move "
+                                 * foo
+                                 ** baz :wrong:
+                                 * bar
+                                 ** baz :correct:"
       (expect (org-archive-mirror--heading-location '("bar" "baz"))
               :to-be
               (save-excursion

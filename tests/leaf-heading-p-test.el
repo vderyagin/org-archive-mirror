@@ -2,11 +2,14 @@
 
 (describe "org-archive-mirror--leaf-heading-p"
   (it "accepts an empty heading"
-    (with-org-allow-point-move "* foo"
+    (with-org-allow-point-move "
+                                 * foo"
       (expect (org-archive-mirror--leaf-heading-p) :to-be-truthy)))
 
   (it "accepts a heading with some plain text content"
-    (with-org-allow-point-move "* TODO foo\nfoo bar baz"
+    (with-org-allow-point-move "
+                                 * TODO foo
+                                 foo bar baz"
       (expect (org-archive-mirror--leaf-heading-p) :to-be-truthy)))
 
   (it "accepts deeply nested heading with siblings"
@@ -18,7 +21,9 @@
       (expect (org-archive-mirror--leaf-heading-p) :to-be-truthy)))
 
   (it "rejects a heading with children"
-    (with-org-allow-point-move "* foo\n** bar"
+    (with-org-allow-point-move "
+                                 * foo
+                                 ** bar"
       (expect (org-archive-mirror--leaf-heading-p) :to-be nil)))
 
   (it "does not explode when called outside of any subtree"

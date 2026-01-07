@@ -2,59 +2,87 @@
 
 (describe "org-archive-mirror--deduplicate-heading"
   (it "does nothing if heading is not duplicated"
-    (let ((content "* foo\n** bar"))
-      (with-org-allow-point-move content
-        (org-archive-mirror--deduplicate-heading '("foo" "bar"))
-        (expect (buffer-string) :to-equal content))))
+    (with-org-allow-point-move "
+                     * foo
+                     ** bar"
+      (org-archive-mirror--deduplicate-heading '("foo" "bar"))
+      (expect-org-content "
+                     * foo
+                     ** bar")))
 
   (it "does nothing (and does not explode) if heading is not there"
     (with-org-allow-point-move ""
       (org-archive-mirror--deduplicate-heading '("foo" "bar"))
-      (expect (buffer-string) :to-equal "")))
+      (expect-org-content "")))
 
   (it "does not touch duplicated leaf headings"
-    (let ((content "* foo\n** bar\n** quux\n** bar\n** bar"))
-      (with-org-allow-point-move content
-        (org-archive-mirror--deduplicate-heading '("foo" "bar"))
-        (expect (buffer-string) :to-equal content))))
+    (with-org-allow-point-move "
+                     * foo
+                     ** bar
+                     ** quux
+                     ** bar
+                     ** bar"
+      (org-archive-mirror--deduplicate-heading '("foo" "bar"))
+      (expect-org-content "
+                     * foo
+                     ** bar
+                     ** quux
+                     ** bar
+                     ** bar")))
 
   (it "combines children of duplicated headings"
-    (with-org-allow-point-move "* foo\n** one\n* foo\n** two\n* foo\n** three"
+    (with-org-allow-point-move "
+                                 * foo
+                                 ** one
+                                 * foo
+                                 ** two
+                                 * foo
+                                 ** three"
       (org-archive-mirror--deduplicate-heading '("foo"))
-      (expect (buffer-string)
-              :to-equal
-              "* foo\n** one\n** two\n** three")))
+      (expect-org-content "
+                * foo
+                ** one
+                ** two
+                ** three")))
 
   (it "leaves the last instance, if headings have progress indicators in square brackets"
-    (with-org-allow-point-move "* foo [0/3]\n** one\n* foo [1/3]\n** two\n* foo [3/3]\n** three"
+    (with-org-allow-point-move "
+                                 * foo [0/3]
+                                 ** one
+                                 * foo [1/3]
+                                 ** two
+                                 * foo [3/3]
+                                 ** three"
       (org-archive-mirror--deduplicate-heading '("foo"))
-      (expect (buffer-string)
-              :to-equal
-              "* foo [3/3]\n** one\n** two\n** three")))
+      (expect-org-content "
+                * foo [3/3]
+                ** one
+                ** two
+                ** three")))
 
   (it "deduplicates children recursively"
-    (with-org-allow-point-move "* foo
-** bar
-*** quux
-**** one
-** baz
-*** corge
-**** thud
-***** plugh
-** bar
-*** quux
-**** two
-**** three"
+    (with-org-allow-point-move "
+                                 * foo
+                                 ** bar
+                                 *** quux
+                                 **** one
+                                 ** baz
+                                 *** corge
+                                 **** thud
+                                 ***** plugh
+                                 ** bar
+                                 *** quux
+                                 **** two
+                                 **** three"
       (org-archive-mirror--deduplicate-heading '("foo" "bar"))
-      (expect (buffer-string)
-              :to-equal
-              "* foo
-** baz
-*** corge
-**** thud
-***** plugh
-** bar
-*** quux
-**** one
-**** two
-**** three"))))
+      (expect-org-content "
+                * foo
+                ** baz
+                *** corge
+                **** thud
+                ***** plugh
+                ** bar
+                *** quux
+                **** one
+                **** two
+                **** three"))))

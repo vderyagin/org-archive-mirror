@@ -9,51 +9,101 @@
   (it "inserts outlines in empty buffer"
     (with-org-allow-point-move ""
       (org-archive-mirror--insert-outline '("foo" "bar"))
-      (expect (buffer-string)
-              :to-equal
-              "* foo\n** bar")))
+      (expect-org-content "
+                * foo
+                ** bar")))
 
   (it "does nothing if said outline is already there"
-    (let ((text "* foo\n** bar\n*** baz"))
+    (let ((text "
+                  * foo
+                  ** bar
+                  *** baz"))
       (with-org-allow-point-move text
         (org-archive-mirror--insert-outline '("foo" "bar" "baz"))
-        (expect (buffer-string) :to-equal text))))
+        (expect-org-content "
+                  * foo
+                  ** bar
+                  *** baz"))))
 
   (it "is not confused by todo keywords"
-    (let ((text "* TODO foo\n** TODO bar\n*** DONE baz"))
+    (let ((text "
+                  * TODO foo
+                  ** TODO bar
+                  *** DONE baz"))
       (with-org-allow-point-move text
         (org-archive-mirror--insert-outline '("foo" "bar" "baz"))
-        (expect (buffer-string) :to-equal text))))
+        (expect-org-content "
+                  * TODO foo
+                  ** TODO bar
+                  *** DONE baz"))))
 
   (it "ignores progress indicators when reusing headings"
-    (let ((text "* foo [1/3]\n** bar [0/2]\n*** baz [2/2]"))
+    (let ((text "
+                  * foo [1/3]
+                  ** bar [0/2]
+                  *** baz [2/2]"))
       (with-org-allow-point-move text
         (org-archive-mirror--insert-outline '("foo" "bar" "baz"))
-        (expect (buffer-string) :to-equal text))))
+        (expect-org-content "
+                  * foo [1/3]
+                  ** bar [0/2]
+                  *** baz [2/2]"))))
 
   (it "reuses existing partial outline"
-    (with-org-allow-point-move "* foo\n** bar"
+    (with-org-allow-point-move "
+                                 * foo
+                                 ** bar"
       (org-archive-mirror--insert-outline '("foo" "bar" "baz"))
-      (expect (buffer-string) :to-equal "* foo\n** bar\n*** baz")))
+      (expect-org-content "
+                * foo
+                ** bar
+                *** baz")))
 
   (it "leaves other siblings intact"
-    (let ((text "* foo\n** baz\n** quux\n*** grault\n*** plugh\n*** garply\n** foobar
-* bar\n** corge"))
+    (let ((text "
+                  * foo
+                  ** baz
+                  ** quux
+                  *** grault
+                  *** plugh
+                  *** garply
+                  ** foobar
+                  * bar
+                  ** corge"))
       (with-org-allow-point-move text
         (org-archive-mirror--insert-outline '("foo" "quux" "plugh"))
-        (expect (buffer-string) :to-equal text))))
+        (expect-org-content "
+                  * foo
+                  ** baz
+                  ** quux
+                  *** grault
+                  *** plugh
+                  *** garply
+                  ** foobar
+                  * bar
+                  ** corge"))))
 
   (it "inserts under the correct branch with duplicate names"
-    (let ((text "* foo\n** bar\n* baz\n** bar"))
+    (let ((text "
+                  * foo
+                  ** bar
+                  * baz
+                  ** bar"))
       (with-org-allow-point-move text
         (org-archive-mirror--insert-outline '("baz" "bar" "quux"))
-        (expect (buffer-string)
-                :to-equal
-                "* foo\n** bar\n* baz\n** bar\n*** quux"))))
+        (expect-org-content "
+                  * foo
+                  ** bar
+                  * baz
+                  ** bar
+                  *** quux"))))
 
   (it "does not produce any extra newlines when inserting heading"
-    (with-org-allow-point-move "* foo\n* quux"
+    (with-org-allow-point-move "
+                                 * foo
+                                 * quux"
       (org-archive-mirror--insert-outline '("foo" "bar"))
-      (expect (buffer-string)
-              :to-equal
-              "* foo\n** bar\n* quux"))))
+      (expect-org-content "
+                * foo
+                ** bar
+                * quux"))))

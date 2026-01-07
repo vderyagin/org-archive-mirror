@@ -22,7 +22,11 @@
 
 (describe "org-archive-mirror integration"
   (it "archives a subtree into an empty archive"
-    (with-org-archive-buffers "* foo\n** <POINT>bar\n*** baz\n" ""
+    (with-org-archive-buffers "
+                                * foo
+                                ** <POINT>bar
+                                *** baz"
+                              ""
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))
       (let ((headline (org-archive-mirror-test--find-headline archive-buffer '("foo" "bar"))))
@@ -33,7 +37,11 @@
         (expect (string-match-p "\\*\\* bar" (buffer-string)) :to-be nil))))
 
   (it "archives into an existing outline without duplication"
-    (with-org-archive-buffers "* foo\n** <POINT>bar\n" "* foo\n"
+    (with-org-archive-buffers "
+                                * foo
+                                ** <POINT>bar"
+                              "
+                                * foo"
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))
       (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo")) :to-be 1)
@@ -41,8 +49,13 @@
 
   (it "treats TODO and progress cookie changes as same heading"
     (with-org-archive-buffers
-        "* TODO foo [2/2]\n** <POINT>bar [1/1]\n*** baz\n"
-        "* foo [1/2]\n** DONE bar [0/1]\n"
+        "
+          * TODO foo [2/2]
+          ** <POINT>bar [1/1]
+          *** baz"
+        "
+          * foo [1/2]
+          ** DONE bar [0/1]"
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))
       (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo" "bar")) :to-be 1)
@@ -52,8 +65,14 @@
 
   (it "deduplicates existing archive headings"
     (with-org-archive-buffers
-        "* <POINT>foo\n** three\n"
-        "* foo\n** one\n* foo\n** two\n"
+        "
+          * <POINT>foo
+          ** three"
+        "
+          * foo
+          ** one
+          * foo
+          ** two"
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))
       (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo")) :to-be 1)
@@ -63,7 +82,12 @@
 
   (it "archives all headings in a region spanning multiple headings"
     (with-org-archive-buffers
-        "<REGION_BEGIN><POINT>* foo\n** a\n* bar\n** b\n<REGION_END>"
+        "
+          <REGION_BEGIN><POINT>* foo
+          ** a
+          * bar
+          ** b
+          <REGION_END>"
         ""
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))
@@ -72,7 +96,12 @@
 
   (it "archives headings when region begins mid-heading"
     (with-org-archive-buffers
-        "* <REGION_BEGIN><POINT>foo\n** a\n* bar\n** b\n<REGION_END>"
+        "
+          * <REGION_BEGIN><POINT>foo
+          ** a
+          * bar
+          ** b
+          <REGION_END>"
         ""
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))

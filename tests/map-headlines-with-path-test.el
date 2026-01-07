@@ -6,7 +6,11 @@
       (expect (org-archive-mirror--map-headlines-with-path #'ignore) :to-be nil)))
 
   (it "calls function with headline and path for each headline"
-    (with-org "* foo\n** bar\n** baz\n* quux"
+    (with-org "
+                * foo
+                ** bar
+                ** baz
+                * quux"
       (let (collected)
         (org-archive-mirror--map-headlines-with-path
          (lambda (headline path)
@@ -20,7 +24,10 @@
                   ("quux" ("quux")))))))
 
   (it "stops when function returns non-nil"
-    (with-org "* one\n* two\n* three"
+    (with-org "
+                * one
+                * two
+                * three"
       (let ((count 0))
         (org-archive-mirror--map-headlines-with-path
          (lambda (_headline path)
@@ -29,7 +36,9 @@
         (expect count :to-equal 2))))
 
   (it "returns the non-nil value from function"
-    (with-org "* foo\n** bar"
+    (with-org "
+                * foo
+                ** bar"
       (expect (org-archive-mirror--map-headlines-with-path
                (lambda (headline path)
                  (when (equal path '("foo" "bar"))
@@ -37,7 +46,9 @@
               :to-equal 7)))
 
   (it "normalizes titles (strips TODO, progress cookies)"
-    (with-org "* TODO foo [1/2]\n** DONE bar [100%]"
+    (with-org "
+                * TODO foo [1/2]
+                ** DONE bar [100%]"
       (let (paths)
         (org-archive-mirror--map-headlines-with-path
          (lambda (_headline path)
@@ -49,7 +60,12 @@
 
 (describe "org-archive-mirror--for-each-headline-with-path"
   (it "visits all headlines even when buffer has many"
-    (with-org "* a\n** b\n** c\n* d\n** e"
+    (with-org "
+                * a
+                ** b
+                ** c
+                * d
+                ** e"
       (let ((count 0))
         (org-archive-mirror--for-each-headline-with-path
          (lambda (_headline _path)
@@ -57,7 +73,12 @@
         (expect count :to-equal 5))))
 
   (it "handles deeply nested outlines correctly"
-    (with-org "* a\n** b\n*** c\n**** d\n** e"
+    (with-org "
+                * a
+                ** b
+                *** c
+                **** d
+                ** e"
       (let (paths)
         (org-archive-mirror--for-each-headline-with-path
          (lambda (_headline path)
