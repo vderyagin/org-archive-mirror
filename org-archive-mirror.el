@@ -396,7 +396,7 @@ Do nothing if outline is on top level or does not exist."
          (end (region-end))
          (normalized-beg (org-archive-mirror--headline-boundary beg 'begin))
          (normalized-end (org-archive-mirror--headline-boundary end 'end)))
-     (cons normalized-beg (max normalized-beg normalized-end))))
+    (cons normalized-beg (max normalized-beg normalized-end))))
 
 (defun org-archive-mirror--format-plain-archive (content)
   "Format CONTENT as an archived plain text block with timestamp.
