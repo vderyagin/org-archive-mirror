@@ -7,20 +7,20 @@
 
   (it "does not consider non-duplicated heading duplicated"
     (with-org-allow-point-move "
-                                 * foo
-                                 * bar"
+                                * foo
+                                * bar"
       (expect (org-archive-mirror--heading-duplicated-p '("foo")) :to-be nil)))
 
   (it "detects a top-level duplicated heading"
     (with-org-allow-point-move "
-                                 * foo
-                                 * foo"
+                                * foo
+                                * foo"
       (expect (org-archive-mirror--heading-duplicated-p '("foo")) :to-be-truthy)))
 
   (it "treats progress indicators as part of the same heading"
     (with-org-allow-point-move "
-                                 * foo [0/2]
-                                 * foo [2/2]"
+                                * foo [0/2]
+                                * foo [2/2]"
       (expect (org-archive-mirror--heading-duplicated-p '("foo")) :to-be-truthy)))
 
   (it "returns nil when asked for nonexistent heading"
@@ -29,28 +29,28 @@
 
   (it "detects deeply nested duplicated heading"
     (with-org-allow-point-move "
-                                 * foo
-                                 ** bar
-                                 *** baz
-                                 *** quux
-                                 *** baz
-                                 *** corge"
+                                * foo
+                                ** bar
+                                *** baz
+                                *** quux
+                                *** baz
+                                *** corge"
       (expect (org-archive-mirror--heading-duplicated-p '("foo" "bar" "baz")) :to-be-truthy)))
 
   (it "is not confused by heading with same name in different subtrees"
     (with-org-allow-point-move "
-                                 * foo
-                                 ** bar
-                                 * baz
-                                 ** bar"
+                                * foo
+                                ** bar
+                                * baz
+                                ** bar"
       (expect (org-archive-mirror--heading-duplicated-p '("foo" "bar")) :to-be nil)
       (expect (org-archive-mirror--heading-duplicated-p '("baz" "bar")) :to-be nil)))
 
   (it "is not confused by heading with same name on different levels"
     (with-org-allow-point-move "
-                                 * foo
-                                 ** foo
-                                 *** foo
-                                 **** foo"
+                                * foo
+                                ** foo
+                                *** foo
+                                **** foo"
       (expect (org-archive-mirror--heading-duplicated-p '("foo")) :to-be nil)
       (expect (org-archive-mirror--heading-duplicated-p '("foo" "foo")) :to-be nil))))

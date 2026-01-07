@@ -8,32 +8,31 @@
 
   (it "removes heading with children, returns children"
     (with-org-allow-point-move "
-                                 * foo
-                                 ** bar
-                                 *** baz
-                                 ** quux"
+                                * foo
+                                ** bar
+                                *** baz
+                                ** quux"
       (expect-org-string
        (org-archive-mirror--remove-heading-extract-children (point-min))
        "
-                ** bar
-                *** baz
-                ** quux")
+        ** bar
+        *** baz
+        ** quux")
       (expect-org-content "")))
 
   (it "does not touch any surrounding stuff"
     (with-org-allow-point-move "
-                                 * foo
-                                 * bar
-                                 ** quux
-                                 * baz"
+                                * foo
+                                * bar
+                                ** quux
+                                * baz"
       (expect-org-string
        (org-archive-mirror--remove-heading-extract-children
         (save-excursion
           (search-forward "bar")
           (org-back-to-heading)
           (point)))
-       "
-                ** quux")
+       "** quux")
       (expect-org-content "
-                * foo
-                * baz"))))
+                           * foo
+                           * baz"))))

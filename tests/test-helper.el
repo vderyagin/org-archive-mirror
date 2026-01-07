@@ -2,6 +2,7 @@
 
 (require 'org-archive-mirror)
 (require 'subr-x)
+(require 'cl-lib)
 
 (setq org-element-use-cache nil)
 
@@ -48,6 +49,8 @@ is stripped so multi-line strings can be indented naturally."
   (declare (indent 1))
   (let ((position (gensym)))
     `(with-temp-buffer
+       (cl-assert (or (string-prefix-p "\n" ,text)
+                      (not (string-match-p "\n" ,text))))
        (org-mode)
        (setq-local org-element-use-cache nil)
        (insert (org-archive-mirror-test--fixture ,text))
@@ -79,7 +82,7 @@ is stripped so multi-line strings can be indented naturally."
       (when (and region-begin region-end)
         (goto-char region-end)
         (set-mark region-begin)
-       (activate-mark))
+        (activate-mark))
       (current-buffer))))
 
 (defmacro expect-org-content (expected &optional buffer)
@@ -115,8 +118,8 @@ Text is normalized via `org-archive-mirror-test--fixture'."
           (archive-buffer (find-file-noselect archive-file)))
      (unwind-protect
          (progn
-           (org-archive-mirror-test--setup-buffer source-buffer ,source-text)
-           (org-archive-mirror-test--setup-buffer archive-buffer ,archive-text)
+           (org-archive-mirror-test--setup-buffer source-buffer ,(org-archive-mirror-test--fixture source-text))
+           (org-archive-mirror-test--setup-buffer archive-buffer ,(org-archive-mirror-test--fixture archive-text))
            (let ((org-archive-mirror-archive-file-function (lambda () archive-file)))
              ,@body))
        (org-archive-mirror-test--cleanup-buffers (list source-buffer archive-buffer))
