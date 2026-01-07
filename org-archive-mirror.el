@@ -443,6 +443,23 @@ containing an inactive timestamp."
          (org-archive-mirror--maybe-insert-newline)
          (insert formatted-content "\n"))))))
 
+;;;###autoload
+(defun org-archive-mirror-dwim ()
+  "Archive the region or subtree at point, depending on context.
+If region is active and contains headings, archive those headings.
+If region is active with plain text only, archive as plain text.
+If no region, archive the subtree at point."
+  (interactive)
+  (cond
+   ((region-active-p)
+    (if (org-archive-mirror--includes-headings-p (region-beginning) (region-end))
+        (org-archive-mirror-subtree)
+      (org-archive-mirror-plain)))
+   ((org-at-heading-p)
+    (org-archive-mirror-subtree))
+   (t
+    (user-error "org-archive-mirror: not on a heading"))))
+
 (provide 'org-archive-mirror)
 
 ;;; org-archive-mirror.el ends here
