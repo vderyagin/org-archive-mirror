@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror-plain"
   (it "archives region into the current outline"
     (with-org-archive-buffers

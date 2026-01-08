@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (require 'org-element)
 
 (defun org-archive-mirror-test--find-headline (buffer outline)

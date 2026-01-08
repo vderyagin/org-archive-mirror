@@ -1,0 +1,10 @@
+; -*- lexical-binding: t -*-
+
+(eldev-use-package-archive 'gnu)
+(eldev-use-package-archive 'melpa)
+
+(setf eldev-project-main-file "org-archive-mirror.el")
+
+(eldev-add-extra-dependencies 'test 'buttercup)
+
+(setf eldev-test-framework 'buttercup)

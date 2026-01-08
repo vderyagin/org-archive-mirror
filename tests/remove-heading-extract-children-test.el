@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--remove-heading-extract-children"
   (it "removes empty heading"
     (with-org-allow-point-move "* foo"

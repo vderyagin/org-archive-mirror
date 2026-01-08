@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--heading-location"
   (it "returns nil when called with empty outline"
     (with-org-allow-point-move ""

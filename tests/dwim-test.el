@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror-dwim"
   (describe "with no region"
     (it "archives subtree when point is on a heading"

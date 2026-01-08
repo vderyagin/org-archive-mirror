@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--deduplicate-heading"
   (it "does nothing if heading is not duplicated"
     (with-org-allow-point-move "

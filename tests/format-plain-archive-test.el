@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--format-plain-archive"
   (it "wraps content in ARCHIVED drawer with timestamp"
     (let* ((content "Some plain text content\nwith multiple lines")

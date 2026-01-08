@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--around-empty-line-p"
   (it "returns t when point is on an empty line (at beginning)"
     (with-org "

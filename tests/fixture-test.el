@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror-test--fixture"
   (it "returns text unchanged when there is no leading whitespace to trim"
     (expect (org-archive-mirror-test--fixture "* foo\n** bar")

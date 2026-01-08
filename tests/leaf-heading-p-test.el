@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--leaf-heading-p"
   (it "accepts an empty heading"
     (with-org-allow-point-move "* foo"

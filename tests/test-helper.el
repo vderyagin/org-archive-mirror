@@ -1,5 +1,6 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'buttercup)
 (require 'org-archive-mirror)
 (require 'subr-x)
 (require 'cl-lib)
@@ -125,4 +126,4 @@ Text is normalized via `org-archive-mirror-test--fixture'."
        (org-archive-mirror-test--cleanup-buffers (list source-buffer archive-buffer))
        (org-archive-mirror-test--cleanup-files (list source-file archive-file)))))
 
-(provide 'test-helper)
+(provide 'tests/test-helper)

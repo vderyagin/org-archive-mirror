@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--deduplicate-children"
   (it "deduplicates direct children with subtrees"
     (with-org-allow-point-move "

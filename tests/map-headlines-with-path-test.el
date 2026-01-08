@@ -1,5 +1,7 @@
 ;;; -*- lexical-binding: t -*-
 
+(require 'tests/test-helper)
+
 (describe "org-archive-mirror--map-headlines-with-path"
   (it "returns nil for empty buffer"
     (with-org ""
