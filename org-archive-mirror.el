@@ -34,6 +34,7 @@
 (require 'org-macs)
 (require 'org-archive)
 (require 'org-element)
+(require 'ol)
 (require 'subr-x)
 (require 'cl-lib)
 
@@ -85,7 +86,8 @@ uses `org-archive-location' to determine the file."
 
 (defun org-archive-mirror--normalize-heading-title (title)
   (when title
-    (org-archive-mirror--strip-progress-cookie (string-trim title))))
+    (org-archive-mirror--strip-progress-cookie
+     (org-link-display-format (string-trim title)))))
 
 (defun org-archive-mirror--headline-title (headline)
   (org-archive-mirror--normalize-heading-title
