@@ -9,12 +9,11 @@
     (org-archive-mirror--find-headline-by-outline outline)))
 
 (defun org-archive-mirror-test--count-headlines (buffer outline)
-  (let ((count 0)
-        (normalized (org-archive-mirror--normalize-outline outline)))
+  (let ((count 0))
     (with-current-buffer buffer
       (org-archive-mirror--for-each-headline-with-path
        (lambda (_headline path)
-         (when (equal path normalized)
+         (when (org-archive-mirror--outlines-equal-p path outline)
            (setq count (1+ count))))))
     count))
 
@@ -98,6 +97,22 @@
       (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo")) :to-be 1)
       (expect (org-archive-mirror-test--count-headlines archive-buffer '("bar")) :to-be 1)))
 
+  (it "archives all headings in a region spanning multiple headings below top-level"
+    (with-org-archive-buffers
+        "
+         * foo
+         ** <REGION_BEGIN><POINT>a
+         ** b<REGION_END>cd
+         * bar"
+        ""
+      (with-current-buffer source-buffer
+        (condition-case nil
+            (org-archive-mirror-subtree)
+          (end-of-buffer nil)))
+      (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo")) :to-be 1)
+      (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo" "a")) :to-be 1)
+      (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo" "bcd")) :to-be 1)))
+
   (it "archives headings when region begins mid-heading"
     (with-org-archive-buffers
         "
@@ -110,4 +125,30 @@
       (with-current-buffer source-buffer
         (org-archive-mirror-subtree))
       (expect (org-archive-mirror-test--count-headlines archive-buffer '("foo")) :to-be 1)
-      (expect (org-archive-mirror-test--count-headlines archive-buffer '("bar")) :to-be 1))))
+      (expect (org-archive-mirror-test--count-headlines archive-buffer '("bar")) :to-be 1)))
+
+  (it "preserves links in archived headings"
+    (with-org-archive-buffers
+        "
+         * [[https://example.com][Example]]
+         ** <POINT>child"
+        ""
+      (with-current-buffer source-buffer
+        (org-archive-mirror-subtree))
+      (expect (org-archive-mirror-test--count-headlines archive-buffer '("Example")) :to-be 1)
+      (with-current-buffer archive-buffer
+        (expect (string-match-p "\\[\\[https://example.com\\]\\[Example\\]\\]" (buffer-string)) :to-be-truthy))))
+
+  (it "matches link heading with existing non-link heading in archive"
+    (with-org-archive-buffers
+        "
+         * [[https://example.com][Example]]
+         ** <POINT>new-child"
+        "* Example
+** old-child"
+      (with-current-buffer source-buffer
+        (org-archive-mirror-subtree))
+      (expect (org-archive-mirror-test--count-headlines archive-buffer '("Example")) :to-be 1)
+      (let ((headline (org-archive-mirror-test--find-headline archive-buffer '("Example"))))
+        (expect (org-archive-mirror-test--headline-children-titles headline)
+                :to-equal '("old-child" "new-child"))))))

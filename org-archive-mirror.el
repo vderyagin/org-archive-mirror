@@ -86,8 +86,7 @@ uses `org-archive-location' to determine the file."
 
 (defun org-archive-mirror--normalize-heading-title (title)
   (when title
-    (org-archive-mirror--strip-progress-cookie
-     (org-link-display-format (string-trim title)))))
+    (org-archive-mirror--strip-progress-cookie (string-trim title))))
 
 (defun org-archive-mirror--headline-title (headline)
   (org-archive-mirror--normalize-heading-title
@@ -95,6 +94,16 @@ uses `org-archive-location' to determine the file."
 
 (defun org-archive-mirror--normalize-outline (outline)
   (mapcar #'org-archive-mirror--normalize-heading-title outline))
+
+(defun org-archive-mirror--normalize-outline-for-comparison (outline)
+  (mapcar (lambda (title)
+            (when title
+              (org-link-display-format title)))
+          (org-archive-mirror--normalize-outline outline)))
+
+(defun org-archive-mirror--outlines-equal-p (outline1 outline2)
+  (equal (org-archive-mirror--normalize-outline-for-comparison outline1)
+         (org-archive-mirror--normalize-outline-for-comparison outline2)))
 
 (defun org-archive-mirror--update-outline-stack (stack level title)
   (let* ((target (max 0 (1- level)))
@@ -140,11 +149,10 @@ Optional AST is a pre-parsed org-element tree to avoid re-parsing."
       nil nil)))
 
 (defun org-archive-mirror--find-headline-by-outline (outline &optional ast)
-  (let ((normalized (org-archive-mirror--normalize-outline outline)))
-    (org-archive-mirror--map-headlines-with-path
-     (lambda (headline path)
-       (when (equal path normalized) headline))
-     ast)))
+  (org-archive-mirror--map-headlines-with-path
+   (lambda (headline path)
+     (when (org-archive-mirror--outlines-equal-p path outline) headline))
+   ast))
 
 (defun org-archive-mirror--get-full-outline-path ()
   (when-let* ((result (org-archive-mirror--headline-and-path-at-point)))
@@ -153,12 +161,13 @@ Optional AST is a pre-parsed org-element tree to avoid re-parsing."
 (defun org-archive-mirror--headline-and-path-at-point ()
   (let ((pos (point))
         result)
-    (org-archive-mirror--for-each-headline-with-path
-     (lambda (headline path)
-       (let ((begin (org-element-property :begin headline))
-             (end (org-element-property :end headline)))
-         (when (and (<= begin pos) (< pos end))
-           (setq result (list headline path))))))
+    (org-with-wide-buffer
+     (org-archive-mirror--for-each-headline-with-path
+      (lambda (headline path)
+        (let ((begin (org-element-property :begin headline))
+              (end (org-element-property :end headline)))
+          (when (and (<= begin pos) (< pos end))
+            (setq result (list headline path)))))))
     result))
 
 (defun org-archive-mirror--insert-outline (outline)
@@ -197,25 +206,23 @@ Optional AST is a pre-parsed org-element tree to avoid re-parsing."
 
 (defun org-archive-mirror--heading-duplicated-p (outline &optional ast)
   (when outline
-    (let ((normalized (org-archive-mirror--normalize-outline outline))
-          (occurrences 0))
+    (let ((occurrences 0))
       (org-with-wide-buffer
        (org-archive-mirror--map-headlines-with-path
         (lambda (_headline path)
-          (when (equal path normalized)
+          (when (org-archive-mirror--outlines-equal-p path outline)
             (setq occurrences (1+ occurrences))
             (when (> occurrences 1) t)))
         ast)
        (> occurrences 1)))))
 
 (defun org-archive-mirror--outline-has-children-p (outline &optional ast)
-  (let ((normalized (org-archive-mirror--normalize-outline outline)))
-    (org-with-wide-buffer
-     (org-archive-mirror--map-headlines-with-path
-      (lambda (headline path)
-        (when (equal path normalized)
-          (org-archive-mirror--headline-has-children-p headline)))
-      ast))))
+  (org-with-wide-buffer
+   (org-archive-mirror--map-headlines-with-path
+    (lambda (headline path)
+      (when (org-archive-mirror--outlines-equal-p path outline)
+        (org-archive-mirror--headline-has-children-p headline)))
+    ast)))
 
 (defun org-archive-mirror--narrow-to-parent (outline)
   "If heading corresponding to OUTLINE has parent, narrow to it's subtree.
@@ -248,12 +255,11 @@ Do nothing if outline is on top level or does not exist."
     children))
 
 (defun org-archive-mirror--direct-child-outlines (parent-outline &optional ast)
-  (let ((normalized (org-archive-mirror--normalize-outline parent-outline))
-        (children nil))
+  (let ((children nil))
     (org-archive-mirror--for-each-headline-with-path
      (lambda (_headline path)
-       (when (and (= (length path) (1+ (length normalized)))
-                  (equal (butlast path) normalized))
+       (when (and (= (length path) (1+ (length parent-outline)))
+                  (org-archive-mirror--outlines-equal-p (butlast path) parent-outline))
          (push path children)))
      ast)
     (nreverse children)))
@@ -303,33 +309,27 @@ Do nothing if outline is on top level or does not exist."
          (archive-file (org-archive-mirror--get-archive-file))
          (archive-buffer (or (find-buffer-visiting archive-file)
                              (find-file-noselect archive-file)))
-         (org-archive-location (format
-                                "%s::%s"
-                                archive-file
-                                (if parent-outline-path
-                                    (format
-                                     "%s %s"
-                                     (make-string (length parent-outline-path) ?*)
-                                     (org-last parent-outline-path))
-                                  ""))))
+         org-archive-location)
 
     (with-current-buffer archive-buffer
-      ;; make sure archive buffer contains relevant outline
       (org-archive-mirror--insert-outline parent-outline-path)
-      ;; if entry to be archived has a parent, narrow archive buffer
-      ;; correspondingly, so that archived entry does not end up in wrong
-      ;; place
-      (when-let* ((parent-heading (org-archive-mirror--heading-location parent-outline-path)))
-        (goto-char parent-heading)
-        (org-narrow-to-subtree)))
+      (when-let* ((parent-heading (org-archive-mirror--find-headline-by-outline parent-outline-path)))
+        (let ((actual-title (org-archive-mirror--headline-title parent-heading)))
+          (setq org-archive-location
+                (format "%s::%s %s"
+                        archive-file
+                        (make-string (length parent-outline-path) ?*)
+                        actual-title))
+          (goto-char (org-element-property :begin parent-heading))
+          (org-narrow-to-subtree))))
 
-    ;; do the archiving
+    (unless org-archive-location
+      (setq org-archive-location (format "%s::" archive-file)))
+
     (org-archive-subtree)
 
     (with-current-buffer archive-buffer
-      ;; get rid of any previous narrowing
       (widen)
-      ;; clean up duplications, if any were introduced
       (org-archive-mirror--deduplicate-heading outline-path))))
 
 ;;;###autoload
