@@ -72,3 +72,12 @@ Since version 29.1 Emacs got a "sibling file" concept, something like a test or 
   (rx-to-string (list 'and org-directory "/archive" '(group "/" (+ not-newline) ".org") ".gpg" 'string-end) 'no-group)
   (rx-to-string (list 'and org-directory '(backref 1) '(optional ".gpg") 'string-end) 'no-group))))
 ```
+
+## Development ##
+
+This project uses [Eldev](https://github.com/emacs-eldev/eldev) for development.
+
+```sh
+eldev compile --force-all
+eldev test
+```
