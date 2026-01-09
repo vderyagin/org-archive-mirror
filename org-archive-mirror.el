@@ -31,12 +31,14 @@
 ;;; Code:
 
 (require 'org)
-(require 'org-macs)
+(eval-when-compile
+  (require 'org-macs))
 (require 'org-archive)
 (require 'org-element)
 (require 'ol)
-(require 'subr-x)
 (require 'cl-lib)
+(require 'seq)
+(require 'subr-x)
 
 (defgroup org-archive-mirror nil
   "A tool for archiving org subtrees mirroring original structure"
@@ -93,13 +95,13 @@ uses `org-archive-location' to determine the file."
    (org-element-property :raw-value headline)))
 
 (defun org-archive-mirror--normalize-outline (outline)
-  (mapcar #'org-archive-mirror--normalize-heading-title outline))
+  (seq-map #'org-archive-mirror--normalize-heading-title outline))
 
 (defun org-archive-mirror--normalize-outline-for-comparison (outline)
-  (mapcar (lambda (title)
-            (when title
-              (org-link-display-format title)))
-          (org-archive-mirror--normalize-outline outline)))
+  (seq-map (lambda (title)
+             (when title
+               (org-link-display-format title)))
+           (org-archive-mirror--normalize-outline outline)))
 
 (defun org-archive-mirror--outlines-equal-p (outline1 outline2)
   (equal (org-archive-mirror--normalize-outline-for-comparison outline1)

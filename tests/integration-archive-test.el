@@ -18,8 +18,8 @@
     count))
 
 (defun org-archive-mirror-test--headline-children-titles (headline)
-  (mapcar #'org-archive-mirror--headline-title
-          (org-element-map (org-element-contents headline) 'headline #'identity)))
+  (seq-map #'org-archive-mirror--headline-title
+           (org-element-map (org-element-contents headline) 'headline #'identity)))
 
 (describe "org-archive-mirror integration"
   (it "archives a subtree into an empty archive"
