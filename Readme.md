@@ -2,19 +2,51 @@
 
 This package provides an archiving functionality for org-mode, which makes sure archived entry is under the same heading hierarchy as it was in its original place.
 
-## Installation ##
-
-## Configuration ##
+## Installation & configuration example (use-package, straight.el) ##
 
 ```lisp
-(custom-set-variables
- '(org-archive-default-command #'org-archive-mirror-subtree))
+(use-package org-archive
+  :defer t
 
-(with-eval-after-load 'org-agenda
-  (fset 'org-agenda-archive #'org-agenda-archive-default))
+  :custom
+  (org-archive-default-command #'org-archive-mirror-subtree)
 
-(define-key org-mode-map (kbd "C-c $") #'org-archive-subtree-default)
+  :init
+  (with-eval-after-load 'org-agenda
+    (fset 'org-agenda-archive #'org-agenda-archive-default)))
+
+(use-package org-archive-mirror
+  :straight (:host github :repo "vderyagin/org-archive-mirror")
+  :after org-archive
+
+  :bind (:map org-mode-map
+              ("C-c $" . org-archive-mirror-dwim)))
 ```
+
+## Commands ##
+
+### `org-archive-mirror-dwim` ###
+
+The main entry point. Context-aware archiving command that does the right thing based on the current state:
+
+- If region is active and contains headings: archives those headings (same as `org-archive-mirror-subtree`)
+- If region is active with plain text only: archives the text as plain content (same as `org-archive-mirror-plain`)
+- If no region and point is on a heading: archives the subtree at point
+
+### `org-archive-mirror-subtree` ###
+
+Archives the subtree at point (or selected headings in active region) to the archive file, preserving the original heading hierarchy. The archived entry appears under the same parent structure in the archive file as it had in the source file.
+
+### `org-archive-mirror-plain` ###
+
+Archives a selected region of plain text (non-heading content) to the archive file. The region must:
+- Be active (text must be selected)
+- Not contain any headings
+- Begin and end at or adjacent to an empty line
+
+The archived content is wrapped in an `:ARCHIVED:` drawer with a timestamp, and placed under the corresponding heading hierarchy in the archive file (if the region was under a heading in the source).
+
+## Configuration ##
 
 By default an archive file is determined according to `org-archive-location` variable, but if you need to employ more complex logic then it allows, you can set `org-archive-mirror-archive-file-function` to a no-argument function, which, when invoked at the original heading location, must return a path to archive file.
 
