@@ -1,6 +1,5 @@
 default: build
 
-
 # compile elisp
 build: _ensure-eldev-installed
     eldev compile \
